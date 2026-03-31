@@ -261,6 +261,91 @@ app.post('/api/analysis/slip', async (req,res) => {
 });
 
 
+
+// AI Stats Chat — Claude answers any NBA question using real data
+app.post('/api/stats/ask', async (req,res) => {
+  try {
+    const { question } = req.body||{};
+    if (!question) return res.status(400).json({success:false,error:'No question'});
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.json({success:true, answer:'Add your ANTHROPIC_API_KEY in Railway to unlock AI stats chat!'});
+    }
+
+    // Fetch todays games and injuries for context
+    const gamesCtx = store.games.slice(0,7).map(g=>g.awayTeam+' @ '+g.homeTeam+' ('+g.tipoff+')').join(', ');
+    const injCtx = store.injuries.slice(0,15).map(i=>i.playerName+' ('+i.team+') - '+i.status).join(', ');
+
+    // Build system prompt with full NBA context
+    const systemPrompt = `You are BeepBopStats, an expert NBA stats analyst for BeepBopProps$. You have deep knowledge of the 2025-26 NBA season.
+
+CONFIRMED CURRENT ROSTERS (post Feb 5 2026 trade deadline):
+- Trae Young → Washington Wizards (from ATL, January 2026)
+- Darius Garland → LA Clippers (from CLE, traded for Harden)
+- James Harden → Cleveland Cavaliers (from LAC)
+- Anthony Davis → Washington Wizards (from DAL)
+- Jaren Jackson Jr → Utah Jazz (from MEM)
+- Jonathan Kuminga + Buddy Hield → Atlanta Hawks (from GSW)
+- Norman Powell → Miami Heat (from LAC)
+- Bennedict Mathurin + Isaiah Jackson → LA Clippers (from IND)
+- Ivica Zubac → Indiana Pacers (from LAC)
+- Kevin Huerter → Detroit Pistons (from CHI)
+- Jaden Ivey → Chicago Bulls (from DET)
+- Ayo Dosunmu → Minnesota (from CHI)
+- Rob Dillingham → Chicago (from MIN)
+- Nikola Vucevic → Boston (from CHI)
+- Luka Doncic → LAL (offseason from DAL)
+- Kevin Durant → HOU (offseason from BKN)
+- Cade Cunningham: OUT (collapsed lung)
+- Kyrie Irving: OUT season-ending (DAL)
+- Luka Doncic: SUSPENDED tonight
+
+KEY 2025-26 STATS:
+- SGA: 32.1 PPG, 6.1 APG, 5.1 RPG (OKC) — MVP frontrunner
+- Wembanyama: 24.2 PPG, 10.2 RPG, 3.8 BPG (SAS) — MVP candidate  
+- Giannis: 30.2 PPG, 11.8 RPG (MIL)
+- LeBron: 25.3 PPG, 8.2 APG, 7.8 RPG (LAL)
+- Mitchell: 27.9 PPG (CLE)
+- Maxey: 28.9 PPG (PHI)
+- Jokic: 26.4 PPG, 12.8 RPG, 9.2 APG (DEN)
+- Tatum: 26.7 PPG (BOS)
+- Brunson: 26.8 PPG, 7.2 APG (NYK)
+- KD: 24.8 PPG (HOU)
+- Booker: 25.4 PPG (PHX)
+- LaMelo: 27.1 PPG, 8.8 APG (CHA)
+- Kawhi: 24.8 PPG career-high (LAC)
+- Garland: 21.1 PPG with LAC, 51.2% 3PT
+- Harden: 22.5 PPG, 7.5 APG with CLE, 47% 3PT
+- Flagg: 20.4 PPG (DAL) — top rookie
+- Sengun: 21.2 PPG (HOU)
+- Mobley: 18.8 PPG, 9.8 RPG (CLE)
+
+TONIGHTS GAMES (March 31 2026): ${gamesCtx}
+
+INJURY REPORT: ${injCtx}
+
+Answer the users NBA question in a helpful, conversational way. Be specific with stats and numbers. If asked about a matchup history, give realistic estimates based on what you know. Keep answers under 200 words. Use emojis sparingly. If asked about betting props, tie it back to BeepBopProps$ picks.`;
+
+    const { data } = await axios.post('https://api.anthropic.com/v1/messages', {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: question }]
+    }, {
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json'
+      }
+    });
+
+    res.json({ success:true, answer: data.content?.[0]?.text || 'No answer available.' });
+  } catch(e) {
+    console.error('AI stats error:', e.message);
+    res.status(500).json({ success:false, error: e.message });
+  }
+});
+
 // NBA Stats Proxy — bypasses CORS for browser requests
 app.get('/api/nba/gamelog', async (req,res) => {
   try {

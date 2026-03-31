@@ -203,30 +203,24 @@
         <div id="injuries-content"><div class="loader-box"><div class="sp">🕷️</div><div class="lt">Loading Injuries...</div><div class="lb-w"><div class="lb"></div></div></div></div>
       </div>
 
-      <div id="tab-stats" class="tab-content">
+            <div id="tab-stats" class="tab-content">
         <div class="sec-title">🔍 BeepBopStats</div>
-        <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Search any player or matchup — "LeBron vs Celtics", "Giannis stats", "Curry last 10 games"</p>
-        <div class="stats-search-wrap">
-          <div class="stats-search-box">
-            <input type="text" id="stats-input" class="stats-input" placeholder="Try: LeBron vs Celtics, Giannis stats, Curry last 10..." />
-            <button class="stats-btn" onclick="searchStats()">Search 🕷️</button>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Ask anything — "LeBron vs Cavs last 10", "Who leads in scoring?", "Best props tonight"</p>
+        <div class="stats-suggestions" id="stats-suggestions" style="margin-bottom:12px"></div>
+        <div id="stats-chat" class="stats-chat">
+          <div id="stats-empty" class="stats-empty">
+            <div style="font-size:36px;margin-bottom:10px">🕷️</div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:20px;color:var(--red);letter-spacing:1px;margin-bottom:6px">BeepBopStats</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.7">Ask me anything about the NBA.<br>Stats · Matchups · Rosters · Props</div>
           </div>
-          <div class="stats-suggestions" id="stats-suggestions"></div>
-          <div id="stats-result">
-            <div class="stats-suggestion-box">
-              <h3>🕷️ BeepBopStats</h3>
-              <p>Real NBA stats powered by the official NBA Stats API.<br>Search any player — season averages, game logs, and matchup history.</p>
-              <div class="stats-sugg-grid">
-                <div class="stats-chip" onclick="runSearch('LaMelo Ball vs Celtics')">LaMelo Ball vs Celtics</div>
-                <div class="stats-chip" onclick="runSearch('Jalen Brunson vs Rockets')">Brunson vs Rockets</div>
-                <div class="stats-chip" onclick="runSearch('Giannis stats')">Giannis stats</div>
-                <div class="stats-chip" onclick="runSearch('Donovan Mitchell vs Lakers')">Mitchell vs Lakers</div>
-                <div class="stats-chip" onclick="runSearch('Kawhi Leonard stats')">Kawhi stats</div>
-                <div class="stats-chip" onclick="runSearch('LeBron James vs Celtics')">LeBron vs Celtics</div>
-                <div class="stats-chip" onclick="runSearch('Stephen Curry vs Lakers')">Curry vs Lakers</div>
-                <div class="stats-chip" onclick="runSearch('Cooper Flagg stats')">Cooper Flagg stats</div>
-              </div>
-            </div>
+        </div>
+        <div class="stats-input-row">
+          <input type="text" id="stats-input" class="stats-input" placeholder="Ask anything... LeBron vs Cavs, Curry 3PT%, best props tonight" />
+          <button class="stats-btn" onclick="searchStats()">Ask 🕷️</button>
+        </div>
+        <div style="text-align:right;margin-top:6px"><button onclick="clearChat()" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer">Clear chat</button></div>
+      </div>
+</div>
           </div>
         </div>
       </div>
