@@ -260,6 +260,41 @@ app.post('/api/analysis/slip', async (req,res) => {
   } catch(e){res.json({success:true,probability:pct,analysis:'Combined probability: '+pct+'%.'});}
 });
 
+
+// NBA Stats Proxy — bypasses CORS for browser requests
+app.get('/api/nba/gamelog', async (req,res) => {
+  try {
+    const { playerId, oppTeamId } = req.query;
+    if (!playerId) return res.status(400).json({success:false,error:'No playerId'});
+    const params = new URLSearchParams({
+      PlayerID: playerId, Season: '2025-26',
+      SeasonType: 'Regular Season', PerMode: 'Totals', LeagueID: '00',
+    });
+    if (oppTeamId) params.append('OppTeamID', oppTeamId);
+    const url = 'https://stats.nba.com/stats/playergamelogs?' + params.toString();
+    const { data } = await axios.get(url, { timeout:10000, headers:{
+      'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Referer':'https://www.nba.com', 'Origin':'https://www.nba.com',
+      'Accept':'application/json','x-nba-stats-origin':'stats','x-nba-stats-token':'true',
+    }});
+    res.json({success:true, data});
+  } catch(e){ res.status(500).json({success:false,error:e.message}); }
+});
+
+app.get('/api/nba/career', async (req,res) => {
+  try {
+    const { playerId } = req.query;
+    if (!playerId) return res.status(400).json({success:false,error:'No playerId'});
+    const url = 'https://stats.nba.com/stats/playercareerstats?PlayerID='+playerId+'&PerMode=PerGame&LeagueID=00';
+    const { data } = await axios.get(url, { timeout:10000, headers:{
+      'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Referer':'https://www.nba.com', 'Origin':'https://www.nba.com',
+      'Accept':'application/json','x-nba-stats-origin':'stats','x-nba-stats-token':'true',
+    }});
+    res.json({success:true, data});
+  } catch(e){ res.status(500).json({success:false,error:e.message}); }
+});
+
 app.get('/api/health',(req,res)=>res.json({status:'ok',time:new Date().toISOString(),games:store.games.length,injuries:store.injuries.length}));
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
 

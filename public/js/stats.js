@@ -149,25 +149,16 @@ function parseQuery(q) {
 }
 
 async function fetchNBA(endpoint, params) {
-  var url = NBA_PROXY + endpoint + '?';
+  // Route through our server proxy to bypass CORS
+  var proxyEndpoint = endpoint === 'playergamelogs' ? '/api/nba/gamelog' : '/api/nba/career';
+  var url = proxyEndpoint + '?';
   var pairs = Object.entries(params).map(function([k,v]){ return k+'='+encodeURIComponent(v); });
   url += pairs.join('&');
-
-  var response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-      'Referer': 'https://www.nba.com',
-      'Origin': 'https://www.nba.com',
-      'Accept': 'application/json, text/plain, */*',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'x-nba-stats-origin': 'stats',
-      'x-nba-stats-token': 'true',
-    },
-    mode: 'cors',
-  });
-
-  if (!response.ok) throw new Error('NBA API returned ' + response.status);
-  return response.json();
+  var response = await fetch(url);
+  if (!response.ok) throw new Error('Stats API returned ' + response.status);
+  var result = await response.json();
+  if (!result.success) throw new Error(result.error || 'Stats unavailable');
+  return result.data;
 }
 
 function formatDate(d) {
@@ -186,13 +177,9 @@ function titleCase(s) {
 
 async function getPlayerGameLog(playerId, oppTeamId) {
   var params = {
-    PlayerID: playerId,
-    Season: '2025-26',
-    SeasonType: 'Regular Season',
-    PerMode: 'Totals',
-    LeagueID: '00',
+    playerId: playerId,
   };
-  if (oppTeamId) params.OppTeamID = oppTeamId;
+  if (oppTeamId) params.oppTeamId = oppTeamId;
 
   var data = await fetchNBA('playergamelogs', params);
   var headers = data.resultSets[0].headers;
@@ -222,9 +209,7 @@ async function getPlayerGameLog(playerId, oppTeamId) {
 
 async function getPlayerSeasonAverages(playerId) {
   var data = await fetchNBA('playercareerstats', {
-    PlayerID: playerId,
-    PerMode: 'PerGame',
-    LeagueID: '00',
+    playerId: playerId,
   });
   var headers = data.resultSets[0].headers;
   var rows = data.resultSets[0].rowSet;
