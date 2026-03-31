@@ -202,6 +202,25 @@
         <div class="sec-title">🏥 Injury Report</div>
         <div id="injuries-content"><div class="loader-box"><div class="sp">🕷️</div><div class="lt">Loading Injuries...</div><div class="lb-w"><div class="lb"></div></div></div></div>
       </div>
+
+      <div id="tab-stats" class="tab-content">
+        <div class="sec-title">🔍 BeepBopStats</div>
+        <div class="stats-search-wrap">
+          <div class="stats-search-box">
+            <input type="text" id="stats-input" class="stats-input" placeholder="Try: LeBron James, Shai Gilgeous-Alexander, Trae Young..." />
+            <button class="stats-btn" onclick="searchStats()">Search 🕷️</button>
+          </div>
+          <div class="stats-suggestions" id="stats-suggestions"></div>
+          <div id="stats-result">
+            <div class="stats-suggestion-box">
+              <h3>🔍 BeepBopStats</h3>
+              <p>Search any NBA player to see their 2025-26 season stats with correct current team info.</p>
+              <div class="stats-sugg-grid" id="stats-quick"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- DESKTOP SLIP PANEL (hidden on mobile) -->
