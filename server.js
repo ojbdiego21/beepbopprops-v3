@@ -125,7 +125,7 @@ const SEEDED_PROPS = [
   { playerName:'Cooper Flagg',            team:'DAL', opponent:'MIL', statType:'points',   line:18.5, direction:'over',  confidence:58, tier:'neutral',
     dkLine:18.5, dkOdds:'-110', fdLine:18.5, fdOdds:'-112', mgmLine:19, mgmOdds:'-115', czrLine:18.5, czrOdds:'-110',
     ppLine:18.5, udLine:19, udOdds:'-115', rebetLine:19, rebetOdds:'-110',
-    hitRateLast10:'5/10', nbaPhotoId:'1642366', reasoning:'Flagg vs MIL — 20.4 PPG but Giannis is a tough matchup. DAL 45.9% road dog.' },
+    hitRateLast10:'5/10', nbaPhotoId:'1642843', reasoning:'Flagg vs MIL — 20.4 PPG but Giannis is a tough matchup. DAL 45.9% road dog.' },
   { playerName:'Paolo Banchero',          team:'ORL', opponent:'PHX', statType:'points',   line:21.5, direction:'over',  confidence:52, tier:'neutral',
     dkLine:21.5, dkOdds:'-108', fdLine:21.5, fdOdds:'-110', mgmLine:22, mgmOdds:'-115', czrLine:21.5, czrOdds:'-108',
     ppLine:21.5, udLine:22, udOdds:'-115', rebetLine:22, rebetOdds:'-108',
