@@ -181,7 +181,10 @@ function buildPropCard(p) {
       + booksHtml
       + '<div class="pp-foot"><div class="hr">L10: <span>'+(p.hitRateLast10||'?/10')+'</span></div><span class="badge b-'+t+'">'+t.toUpperCase()+'</span></div>'
       + (p.reasoning ? '<div class="reason-text">'+p.reasoning+'</div>' : '')
+      + '<div class="prop-actions">'
       + '<button class="btn-add-pick" data-pick-id="'+pickId+'" onclick="addPick(this,\''+safeLabel+'\',\''+safeName+'\',\''+safeGame+'\','+conf+',\''+p.statType+'\',\''+pid+'\',\''+pickId+'\')">＋ Add to Slip</button>'
+      + '<button class="btn-shot-map" onclick="openShotMap(\''+safeName+'\',\''+pid+'\',\''+safeGame.split(\' vs \')[0]+'\',\''+((p.opponent||\'\').replace(/\'/g,\'\\\'\')+'\')+',\''+p.statType+'\')" title="Shot Map">📍 Shot Map</button>'
+      + '</div>'
     + '</div>'
   + '</div>';
 }

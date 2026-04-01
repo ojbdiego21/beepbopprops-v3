@@ -613,6 +613,75 @@ Answer the users NBA question in a helpful, conversational way. Be specific with
   }
 });
 
+
+// NBA Shot Chart Proxy
+app.get('/api/nba/shots', async (req,res) => {
+  try {
+    const { playerId, season, oppTeamId, lastN } = req.query;
+    if (!playerId) return res.status(400).json({success:false,error:'No playerId'});
+    const params = new URLSearchParams({
+      PlayerID: playerId, Season: season||'2025-26',
+      SeasonType: 'Regular Season', LeagueID: '00',
+      PlayerPosition: '', GameSegment: '', Period: 0,
+      DateFrom: '', DateTo: '', GameID: '', Outcome: '',
+      Location: '', Month: 0, OpponentTeamID: oppTeamId||0,
+      RookieYear: '', TeamID: 0, VsConference: '', VsDivision: '',
+      ContextMeasure: 'FGA', LastNGames: lastN||0,
+    });
+    const url = 'https://stats.nba.com/stats/shotchartdetail?' + params.toString();
+    const { data } = await axios.get(url, { timeout:12000, headers:{
+      'User-Agent':'Mozilla/5.0','Referer':'https://www.nba.com','Origin':'https://www.nba.com',
+      'Accept':'application/json','x-nba-stats-origin':'stats','x-nba-stats-token':'true',
+    }});
+    const headers = data.resultSets[0].headers;
+    const rows    = data.resultSets[0].rowSet;
+    const idx = k => headers.indexOf(k);
+    const shots = rows.map(r => ({
+      x:    r[idx('LOC_X')],
+      y:    r[idx('LOC_Y')],
+      made: r[idx('SHOT_MADE_FLAG')] === 1,
+      zone: r[idx('SHOT_ZONE_AREA')]||'',
+      dist: r[idx('SHOT_DISTANCE')],
+      type: r[idx('ACTION_TYPE')]||'',
+      date: r[idx('GAME_DATE')]||'',
+    }));
+    res.json({success:true, count:shots.length, shots});
+  } catch(e){ res.status(500).json({success:false,error:e.message}); }
+});
+
+app.get('/api/nba/positionshots', async (req,res) => {
+  try {
+    const { oppTeamId, excludeId } = req.query;
+    // Get all players at same position vs this opponent
+    const params = new URLSearchParams({
+      Season: '2025-26', SeasonType: 'Regular Season', LeagueID: '00',
+      PlayerPosition: '', GameSegment: '', Period: 0,
+      DateFrom: '', DateTo: '', GameID: '', Outcome: '',
+      Location: '', Month: 0, OpponentTeamID: oppTeamId||0,
+      RookieYear: '', TeamID: 0, VsConference: '', VsDivision: '',
+      ContextMeasure: 'FGA', LastNGames: 0, PlayerID: 0,
+    });
+    const url = 'https://stats.nba.com/stats/shotchartdetail?' + params.toString();
+    const { data } = await axios.get(url, { timeout:12000, headers:{
+      'User-Agent':'Mozilla/5.0','Referer':'https://www.nba.com','Origin':'https://www.nba.com',
+      'Accept':'application/json','x-nba-stats-origin':'stats','x-nba-stats-token':'true',
+    }});
+    const headers = data.resultSets[0].headers;
+    const rows    = data.resultSets[0].rowSet;
+    const idx = k => headers.indexOf(k);
+    const shots = rows
+      .filter(r => String(r[idx('PLAYER_ID')]) !== String(excludeId))
+      .map(r => ({
+        x:    r[idx('LOC_X')],
+        y:    r[idx('LOC_Y')],
+        made: r[idx('SHOT_MADE_FLAG')] === 1,
+        zone: r[idx('SHOT_ZONE_AREA')]||'',
+        player: r[idx('PLAYER_NAME')]||'',
+      }));
+    res.json({success:true, count:shots.length, shots});
+  } catch(e){ res.status(500).json({success:false,error:e.message}); }
+});
+
 // NBA Stats Proxy — bypasses CORS for browser requests
 app.get('/api/nba/gamelog', async (req,res) => {
   try {

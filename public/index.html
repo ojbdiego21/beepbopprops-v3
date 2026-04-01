@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BeepBopProps$ – Live NBA Props</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕷️</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -12,14 +12,14 @@
 <div id="toast"></div>
 
 <button id="mobile-slip-btn" onclick="openSlip()" style="display:none">
-  <span>🕷️ My Slip</span>
+  <span>🤖 My Slip</span>
   <span class="slip-count">0</span>
 </button>
 
 <div id="mobile-slip-overlay" onclick="if(event.target===this)closeSlip()">
   <div class="mobile-slip-inner">
     <div class="slip-head" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">
-      <div><div class="slip-title">🕷️ Pick Slip</div><div class="slip-sub">Your combined probability</div></div>
+      <div><div class="slip-title">🤖 Pick Slip</div><div class="slip-sub">Your combined probability</div></div>
       <button onclick="closeSlip()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">✕</button>
     </div>
     <div style="padding:10px;overflow-y:auto;flex:1">
@@ -45,7 +45,7 @@
 
 <!-- MOBILE SLIP BUTTON (fixed bottom right) -->
 <button id="mobile-slip-btn" onclick="openSlip()" style="display:none">
-  <span>🕷️ My Slip</span>
+  <span>🤖 My Slip</span>
   <span class="slip-count">0</span>
 </button>
 
@@ -54,7 +54,7 @@
   <div class="mobile-slip-inner">
     <div class="slip-head" style="display:flex;align-items:center;justify-content:space-between">
       <div>
-        <div class="slip-title">🕷️ Pick Slip</div>
+        <div class="slip-title">🤖 Pick Slip</div>
         <div class="slip-sub">Your combined probability</div>
       </div>
       <button onclick="closeSlip()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px">✕</button>
@@ -79,7 +79,7 @@
         <div class="slip-pout"><div class="slip-pout-lbl">PP Type</div><div class="slip-pout-val" id="slip-pp-mobile">--</div></div>
       </div>
       <div class="slip-formula" id="slip-formula-mobile">--</div>
-      <button class="slip-ai-btn" onclick="analyzeSlip('-mobile')">🕷️ AI Analyze Slip</button>
+      <button class="slip-ai-btn" onclick="analyzeSlip('-mobile')">🤖 AI Analyze Slip</button>
       <div id="slip-ai-mobile" style="display:none;margin-top:8px;padding:8px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);border-radius:7px;font-size:11px;color:var(--txt);line-height:1.7;overflow-y:auto;max-height:160px"></div>
       <button class="btn-clear" onclick="clearSlip('-mobile')">✕ Clear Slip</button>
     </div>
@@ -88,7 +88,7 @@
 
 <header>
   <div class="hdr">
-    <div class="logo">🕷️ BeepBop<span>Props</span>$</div>
+    <div class="logo">🤖 BeepBop<span>Props</span>$</div>
     <div class="hmeta">
       <div class="live-pill">● LIVE</div>
       <div class="date-pill" id="date-display">--</div>
@@ -139,8 +139,8 @@
       </div>
 
       <div id="tab-games" class="tab-content active">
-        <div class="sec-title">🕷️ Today's Games</div>
-        <div id="games-content"><div class="loader-box"><div class="sp">🕷️</div><div class="lt">Loading Schedule...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+        <div class="sec-title">🤖 Today's Games</div>
+        <div id="games-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Schedule...</div><div class="lb-w"><div class="lb"></div></div></div></div>
       </div>
 
       <div id="tab-props" class="tab-content">
@@ -156,7 +156,7 @@
           <button class="fbtn" onclick="filterProps('elite',this)">⭐ Elite Only</button>
           <button class="fbtn" onclick="filterProps('fade',this)">🚫 Fades</button>
         </div>
-        <div id="props-content"><div class="loader-box"><div class="sp">🕷️</div><div class="lt">Scanning Props Board...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+        <div id="props-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Scanning Props Board...</div><div class="lb-w"><div class="lb"></div></div></div></div>
       </div>
 
       <div id="tab-altlines" class="tab-content">
@@ -170,13 +170,13 @@
           <button class="fbtn" onclick="filterAlt('threes',this)">3PM</button>
           <button class="fbtn" onclick="filterAlt('blocks',this)">Blocks</button>
         </div>
-        <div id="altlines-content"><div class="loader-box"><div class="sp">🕷️</div><div class="lt">Loading Alt Lines...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+        <div id="altlines-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Alt Lines...</div><div class="lb-w"><div class="lb"></div></div></div></div>
       </div>
 
       <div id="tab-live" class="tab-content">
         <div class="sec-title">⚡ Live In-Game Props</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:6px 10px;background:rgba(229,34,34,.05);border-radius:6px;border:1px solid var(--bord)">Props auto-update every 60 seconds during games.</div>
-        <div id="live-content"><div class="loader-box"><div class="sp">🕷️</div><div class="lt">Tuning In Live...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+        <div id="live-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Tuning In Live...</div><div class="lb-w"><div class="lb"></div></div></div></div>
       </div>
 
       <div id="tab-h2h" class="tab-content">
@@ -195,12 +195,12 @@
       <div id="tab-parlays" class="tab-content">
         <div class="sec-title">💰 AI Parlay Builder</div>
         <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Add picks to your slip from the Props tab. Pre-built parlays from today's top picks shown below.</p>
-        <div id="parlays-content"><div class="loader-box"><div class="sp">🕷️</div><div class="lt">Building Parlays...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+        <div id="parlays-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Building Parlays...</div><div class="lb-w"><div class="lb"></div></div></div></div>
       </div>
 
       <div id="tab-injuries" class="tab-content">
         <div class="sec-title">🏥 Injury Report</div>
-        <div id="injuries-content"><div class="loader-box"><div class="sp">🕷️</div><div class="lt">Loading Injuries...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+        <div id="injuries-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Injuries...</div><div class="lb-w"><div class="lb"></div></div></div></div>
       </div>
 
             <div id="tab-stats" class="tab-content">
@@ -209,14 +209,14 @@
         <div class="stats-suggestions" id="stats-suggestions" style="margin-bottom:12px"></div>
         <div id="stats-chat" class="stats-chat">
           <div id="stats-empty" class="stats-empty">
-            <div style="font-size:36px;margin-bottom:10px">🕷️</div>
+            <div style="font-size:36px;margin-bottom:10px">🤖</div>
             <div style="font-family:'Bebas Neue',cursive;font-size:20px;color:var(--red);letter-spacing:1px;margin-bottom:6px">BeepBopStats</div>
             <div style="font-size:12px;color:var(--muted);line-height:1.7">Ask me anything about the NBA.<br>Stats · Matchups · Rosters · Props</div>
           </div>
         </div>
         <div class="stats-input-row">
           <input type="text" id="stats-input" class="stats-input" placeholder="Ask anything... LeBron vs Cavs, Curry 3PT%, best props tonight" />
-          <button class="stats-btn" onclick="searchStats()">Ask 🕷️</button>
+          <button class="stats-btn" onclick="searchStats()">Ask 🤖</button>
         </div>
         <div style="text-align:right;margin-top:6px"><button onclick="clearChat()" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer">Clear chat</button></div>
       </div>
@@ -231,7 +231,7 @@
     <div class="slip-panel">
       <div class="slip-box">
         <div class="slip-head">
-          <div class="slip-title">🕷️ Pick Slip</div>
+          <div class="slip-title">🤖 Pick Slip</div>
           <div class="slip-sub">Add props → combined probability</div>
         </div>
         <div style="padding:10px">
@@ -254,14 +254,14 @@
             <div class="slip-pout"><div class="slip-pout-lbl">PP Type</div><div class="slip-pout-val" id="slip-pp">--</div></div>
           </div>
           <div class="slip-formula" id="slip-formula">--</div>
-          <button class="slip-ai-btn" onclick="analyzeSlip('')">🕷️ AI Analyze Slip</button>
+          <button class="slip-ai-btn" onclick="analyzeSlip('')">🤖 AI Analyze Slip</button>
           <div id="slip-ai" style="display:none;margin-top:8px;padding:8px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);border-radius:7px;font-size:11px;color:var(--txt);line-height:1.7;overflow-y:auto;max-height:160px"></div>
           <button class="btn-clear" onclick="clearSlip('')">✕ Clear Slip</button>
         </div>
       </div>
 
       <div class="tip-card">
-        <div class="tip-title">🕷️ SPIDER-SENSE TIPS</div>
+        <div class="tip-title">🤖 SPIDER-SENSE TIPS</div>
         <div class="tip-body">
           • <strong>Alt Lines tab</strong> = best number across 6 books<br>
           • <strong>Board refreshes every 15 min</strong> during games<br>
@@ -295,5 +295,51 @@
 
 <script src="/js/app.js"></script>
 <script src="/js/stats.js"></script>
+
+  <!-- SHOT MAP OVERLAY -->
+  <div id="shot-overlay" class="shot-overlay"></div>
+
+  <!-- SHOT MAP SLIDE PANEL -->
+  <div id="shot-panel" class="shot-panel">
+    <div class="shot-panel-inner">
+      <!-- Header -->
+      <div class="shot-panel-head">
+        <div class="shot-player-info">
+          <img id="shot-player-img" src="" onerror="this.style.display='none'" class="shot-player-img"/>
+          <div>
+            <div id="shot-player-name" class="shot-player-name"></div>
+            <div id="shot-player-sub" class="shot-player-sub"></div>
+          </div>
+        </div>
+        <button class="shot-close" onclick="closeShotMap()">✕</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="shot-tabs">
+        <button class="shot-tab active" data-view="season"    onclick="switchShotView('season')">Season</button>
+        <button class="shot-tab"        data-view="last5"     onclick="switchShotView('last5')">Last 5</button>
+        <button class="shot-tab"        data-view="last10"    onclick="switchShotView('last10')">Last 10</button>
+        <button class="shot-tab"        data-view="opponent"  onclick="switchShotView('opponent')">vs Opp</button>
+        <button class="shot-tab"        data-view="position"  onclick="switchShotView('position')">Position</button>
+      </div>
+
+      <!-- Stats bar -->
+      <div id="shot-stats" class="shot-stats"></div>
+
+      <!-- Court canvas -->
+      <div id="shot-canvas" class="shot-canvas">
+        <div class="shot-loading"><div class="shot-spinner"></div><div>Loading...</div></div>
+      </div>
+
+      <!-- Legend note -->
+      <div class="shot-legend">
+        <span class="shot-made-dot"></span> Made &nbsp;
+        <span class="shot-miss-dot"></span> Missed &nbsp;·&nbsp;
+        Tap anywhere outside to close
+      </div>
+    </div>
+  </div>
+  <script src="/js/shotmap.js"></script>
+
 </body>
 </html>

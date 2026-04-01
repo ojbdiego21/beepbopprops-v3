@@ -446,3 +446,159 @@ footer{background:var(--dkblue);border-top:1px solid var(--bord);padding:14px;te
 }
 .props-section-title::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--bord),transparent);}
 .started-title{color:var(--muted)!important;font-size:15px!important;}
+
+/* ═══════════════════════════════════════
+   ROBOT THEME OVERRIDES
+   ═══════════════════════════════════════ */
+
+/* Circuit board background pattern */
+body::before {
+  content:'';
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background-image:
+    linear-gradient(rgba(229,34,34,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(229,34,34,.04) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;z-index:0;
+}
+
+/* Robot logo pulse */
+.logo-title::before { content:'🤖 '; }
+
+/* Loader robot */
+.sp { animation: robot-bob 1s ease-in-out infinite; display:inline-block; }
+@keyframes robot-bob {
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(-6px); }
+}
+
+/* Prop card shot map button */
+.prop-actions { display:flex; gap:6px; margin-top:8px; }
+.btn-add-pick { flex:1; }
+.btn-shot-map {
+  padding:8px 10px;
+  background:rgba(229,34,34,.1);
+  border:1px solid var(--bord);
+  border-radius:8px;
+  color:var(--muted);
+  font-size:11px;
+  cursor:pointer;
+  transition:all .2s;
+  white-space:nowrap;
+}
+.btn-shot-map:hover {
+  background:rgba(229,34,34,.2);
+  color:var(--txt);
+  border-color:var(--red);
+}
+
+/* ═══════════════════════════════════════
+   SHOT MAP PANEL
+   ═══════════════════════════════════════ */
+
+.shot-overlay {
+  position:fixed;inset:0;background:rgba(0,0,0,.65);
+  z-index:900;opacity:0;pointer-events:none;
+  transition:opacity .3s ease;
+}
+.shot-overlay.show { opacity:1;pointer-events:all; }
+
+.shot-panel {
+  position:fixed;top:0;right:-100%;width:min(480px,100vw);height:100vh;
+  background:var(--bg);border-left:1px solid var(--bord);
+  z-index:901;transition:right .35s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.shot-panel.open { right:0; }
+
+.shot-panel-inner {
+  display:flex;flex-direction:column;height:100%;overflow:hidden;
+}
+
+/* Panel header */
+.shot-panel-head {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;border-bottom:1px solid var(--bord);
+  background:var(--surf2);flex-shrink:0;
+}
+.shot-player-info { display:flex;align-items:center;gap:12px; }
+.shot-player-img {
+  width:48px;height:48px;border-radius:50%;object-fit:cover;
+  border:2px solid var(--red);background:var(--surf2);
+}
+.shot-player-name { font-family:'Bebas Neue',cursive;font-size:20px;color:var(--txt);letter-spacing:1px; }
+.shot-player-sub  { font-size:11px;color:var(--muted); }
+.shot-close {
+  width:32px;height:32px;border-radius:50%;background:var(--surf2);
+  border:1px solid var(--bord);color:var(--muted);font-size:14px;
+  cursor:pointer;transition:all .2s;flex-shrink:0;
+}
+.shot-close:hover { background:var(--red);color:#fff;border-color:var(--red); }
+
+/* Tabs */
+.shot-tabs {
+  display:flex;gap:4px;padding:10px 12px;
+  border-bottom:1px solid var(--bord);flex-shrink:0;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
+}
+.shot-tabs::-webkit-scrollbar { display:none; }
+.shot-tab {
+  padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;
+  background:var(--surf2);border:1px solid var(--bord);
+  color:var(--muted);cursor:pointer;transition:all .2s;
+  white-space:nowrap;
+}
+.shot-tab.active,
+.shot-tab:hover { background:var(--red);color:#fff;border-color:var(--red); }
+
+/* Stats bar */
+.shot-stats { flex-shrink:0;padding:8px 12px; }
+.shot-zone-grid { display:flex;gap:6px;flex-wrap:wrap; }
+.shot-zone-item {
+  flex:1;min-width:60px;
+  background:var(--surf2);border:1px solid var(--bord);
+  border-radius:8px;padding:6px 8px;text-align:center;
+}
+.szv { font-family:'Bebas Neue',cursive;font-size:18px;color:var(--gold); }
+.szl { font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px; }
+
+/* Court canvas */
+.shot-canvas {
+  flex:1;overflow-y:auto;padding:8px 12px;min-height:0;
+}
+.shot-loading {
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;height:200px;gap:12px;
+  color:var(--muted);font-size:12px;
+}
+.shot-spinner {
+  width:28px;height:28px;border-radius:50%;
+  border:3px solid var(--bord);border-top-color:var(--red);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.shot-error {
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;height:200px;gap:8px;
+  color:var(--muted);font-size:12px;text-align:center;
+}
+
+/* Legend */
+.shot-legend {
+  padding:8px 16px;font-size:10px;color:var(--muted);
+  border-top:1px solid var(--bord);flex-shrink:0;
+  display:flex;align-items:center;gap:4px;
+}
+.shot-made-dot {
+  display:inline-block;width:8px;height:8px;
+  border-radius:50%;background:#FFD700;
+}
+.shot-miss-dot {
+  display:inline-block;width:8px;height:8px;
+  border-radius:50%;background:#ff4444;
+}
+
+/* Mobile shot panel — full width */
+@media(max-width:500px){
+  .shot-panel { width:100vw; }
+}
