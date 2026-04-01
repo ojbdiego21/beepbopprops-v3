@@ -107,6 +107,7 @@
       <li><a href="#" onclick="showTab('tab-parlays',this)">💰 Parlays</a></li>
       <li><a href="#" onclick="showTab('tab-injuries',this)">🏥 Injuries</a></li>
       <li><a href="#" onclick="showTab('tab-stats',this)">🔍 BeepBopStats</a></li>
+      <li><a href="#" onclick="showTab('tab-kryptonite',this)">☠️ BeepBop's Kryptonite</a></li>
     </ul>
   </nav>
 </header>
@@ -329,7 +330,15 @@
       <!-- Court canvas -->
       <div id="shot-canvas" class="shot-canvas">
         <div class="shot-loading"><div class="shot-spinner"></div><div>Loading...</div></div>
+        <div id="tab-kryptonite" class="tab-content">
+        <div class="sec-title">☠️ BeepBop's Kryptonite</div>
+        <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Every team's defensive weakness — which positions score, rebound, and assist the most against them. Your cheat sheet.</p>
+        <div id="kryptonite-content">
+          <div class="loader-box"><div class="sp">🤖</div><div class="lt">Analyzing weaknesses...</div></div>
+        </div>
       </div>
+
+    </div>
 
       <!-- Legend note -->
       <div class="shot-legend">
@@ -341,6 +350,7 @@
   </div>
   <script src="/js/shotmap.js"></script>
   <script src="/js/beepbop.js"></script>
+  <script src="/js/kryptonite.js"></script>
 
 </body>
 </html>

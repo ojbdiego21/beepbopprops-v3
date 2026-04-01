@@ -724,3 +724,51 @@ body::before {
   font-family:'Bebas Neue',cursive;font-size:16px;
   color:var(--red);letter-spacing:2px;text-align:center;
 }
+
+/* ═══════════════════════════════════════
+   KRYPTONITE CHEAT SHEET
+   ═══════════════════════════════════════ */
+.kryp-grid {
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:12px;padding:4px 0;
+}
+.kryp-card {
+  background:var(--card);border:1px solid var(--bord);
+  border-radius:12px;overflow:hidden;
+}
+.kryp-head {
+  padding:12px 14px 10px;background:var(--surf2);
+  border-bottom:1px solid var(--bord);
+}
+.kryp-team {
+  font-family:'Bebas Neue',cursive;font-size:26px;
+  color:var(--txt);letter-spacing:2px;line-height:1;
+}
+.kryp-name  { font-size:11px;color:var(--muted);margin-bottom:4px; }
+.kryp-weakness {
+  font-size:11px;color:var(--txt);line-height:1.4;
+  border-top:1px solid var(--bord);padding-top:6px;margin-top:6px;
+}
+.kryp-stats {
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border-bottom:1px solid var(--bord);
+}
+.kryp-stat {
+  padding:10px 6px;text-align:center;
+  border-right:1px solid var(--bord);
+}
+.kryp-stat:last-child { border-right:none; }
+.kryp-stat-lbl { font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px; }
+.kryp-stat-pos { font-family:'Bebas Neue',cursive;font-size:22px;line-height:1; }
+.kryp-stat-val { font-size:10px;color:var(--muted);margin-top:1px; }
+.kryp-tags { display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px; }
+.kryp-tag {
+  font-size:9px;padding:2px 7px;border-radius:10px;
+  background:rgba(229,34,34,.12);border:1px solid rgba(229,34,34,.25);
+  color:var(--muted);
+}
+.kryp-best-bet {
+  padding:8px 12px;font-size:11px;color:var(--gold);
+  border-top:1px solid var(--bord);background:rgba(255,215,0,.04);
+  font-weight:600;
+}
