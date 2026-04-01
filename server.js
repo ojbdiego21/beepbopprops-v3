@@ -32,7 +32,7 @@ function buildAltLines(line, odds) {
 }
 
 // ── SEEDED PROPS — MARCH 31 2026 ──
-// Games tonight: ORL@PHX, BKN@CHA, MIL@DAL, DET@TOR, HOU@NYK, LAL@CLE, LAC@POR
+// Games April 1 2026: check ESPN for tonights slate
 // All 7 books: DraftKings, FanDuel, BetMGM, Caesars, PrizePicks, Underdog, Rebet
 // CORRECT NBA PHOTO IDs (verified):
 // Jalen Brunson = 1628386, Austin Reaves = 1631244, Jarrett Allen = 1628384
@@ -51,7 +51,7 @@ const SEEDED_PROPS = [
   { playerName:'Jalen Brunson',           team:'NYK', opponent:'HOU', statType:'points',   line:27.5, direction:'over',  confidence:84, tier:'elite',
     dkLine:27.5, dkOdds:'-110', fdLine:27.5, fdOdds:'-112', mgmLine:28, mgmOdds:'-118', czrLine:27.5, czrOdds:'-110',
     ppLine:27.5, udLine:27.5, udOdds:'-112', rebetLine:27.5, rebetOdds:'-108',
-    hitRateLast10:'7/10', nbaPhotoId:'1628386', reasoning:'Brunson vs HOU — NYK just clinched playoff spot. 26.8 PPG season avg.' },
+    hitRateLast10:'7/10', nbaPhotoId:'1628973', reasoning:'Brunson vs HOU — NYK just clinched playoff spot. 26.8 PPG season avg.' },
   { playerName:'Giannis Antetokounmpo',   team:'MIL', opponent:'DAL', statType:'points',   line:29.5, direction:'over',  confidence:83, tier:'elite',
     dkLine:29.5, dkOdds:'-110', fdLine:30, fdOdds:'-115', mgmLine:29.5, mgmOdds:'-108', czrLine:29.5, czrOdds:'-110',
     ppLine:29.5, udLine:30, udOdds:'-115', rebetLine:29.5, rebetOdds:'-108',
@@ -92,7 +92,7 @@ const SEEDED_PROPS = [
   { playerName:'Austin Reaves',           team:'LAL', opponent:'CLE', statType:'points',   line:22.5, direction:'over',  confidence:66, tier:'strong',
     dkLine:22.5, dkOdds:'-108', fdLine:22.5, fdOdds:'-110', mgmLine:23, mgmOdds:'-115', czrLine:22.5, czrOdds:'-108',
     ppLine:22.5, udLine:22.5, udOdds:'-108', rebetLine:22.5, rebetOdds:'-107',
-    hitRateLast10:'6/10', nbaPhotoId:'1631244', reasoning:'Reaves 23.6 PPG leads LAL. Big must-win game = full effort and usage.' },
+    hitRateLast10:'6/10', nbaPhotoId:'1630559', reasoning:'Reaves 23.6 PPG leads LAL. Big must-win game = full effort and usage.' },
   { playerName:'Evan Mobley',             team:'CLE', opponent:'LAL', statType:'rebounds', line:9.5,  direction:'over',  confidence:68, tier:'strong',
     dkLine:9.5, dkOdds:'-115', fdLine:9.5, fdOdds:'-115', mgmLine:9.5, mgmOdds:'-112', czrLine:10, czrOdds:'-125',
     ppLine:9.5, udLine:9.5, udOdds:'-112', rebetLine:9.5, rebetOdds:'-112',
@@ -116,7 +116,7 @@ const SEEDED_PROPS = [
   { playerName:'Jalen Brunson',           team:'NYK', opponent:'HOU', statType:'assists',  line:7.5,  direction:'over',  confidence:65, tier:'strong',
     dkLine:7.5, dkOdds:'-115', fdLine:7.5, fdOdds:'-115', mgmLine:7.5, mgmOdds:'-112', czrLine:8, czrOdds:'-125',
     ppLine:7.5, udLine:7.5, udOdds:'-112', rebetLine:7.5, rebetOdds:'-112',
-    hitRateLast10:'6/10', nbaPhotoId:'1628386', reasoning:'Brunson 7.2 APG. HOU forces turnovers but Brunson handles pressure well.' },
+    hitRateLast10:'6/10', nbaPhotoId:'1628973', reasoning:'Brunson 7.2 APG. HOU forces turnovers but Brunson handles pressure well.' },
   { playerName:'Devin Booker',            team:'PHX', opponent:'ORL', statType:'assists',  line:5.5,  direction:'over',  confidence:64, tier:'neutral',
     dkLine:5.5, dkOdds:'-110', fdLine:5.5, fdOdds:'-112', mgmLine:5.5, mgmOdds:'-110', czrLine:6, czrOdds:'-122',
     ppLine:5.5, udLine:5.5, udOdds:'-108', rebetLine:5.5, rebetOdds:'-108',
