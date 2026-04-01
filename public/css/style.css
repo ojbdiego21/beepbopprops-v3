@@ -504,10 +504,11 @@ body::before {
 .shot-overlay.show { opacity:1;pointer-events:all; }
 
 .shot-panel {
-  position:fixed;top:0;right:-100%;width:min(480px,100vw);height:100vh;
-  background:var(--bg);border-left:1px solid var(--bord);
+  position:fixed;top:0;right:-100%;width:min(500px,100vw);height:100vh;
+  background:#0a0a0f;border-left:1px solid #e52222;
   z-index:901;transition:right .35s cubic-bezier(.4,0,.2,1);
   display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:-4px 0 40px rgba(229,34,34,0.15);
 }
 .shot-panel.open { right:0; }
 
@@ -565,6 +566,7 @@ body::before {
 /* Court canvas */
 .shot-canvas {
   flex:1;overflow-y:auto;padding:8px 12px;min-height:0;
+  background:#0d0d0d;border-radius:8px;margin:0 12px 8px;
 }
 .shot-loading {
   display:flex;flex-direction:column;align-items:center;

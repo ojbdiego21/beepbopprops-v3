@@ -724,7 +724,7 @@ app.listen(PORT, async () => {
   // Refresh ESPN every 15 min during game hours
   cron.schedule('*/15 12-23 * * *', fetchESPN, {timezone:'America/New_York'});
   // Refresh Odds API every 30 min (conserve free tier requests)
-  cron.schedule('*/15 11-23 * * *', fetchOddsAPI, {timezone:'America/New_York'}); // 15min = ~14,400 credits/month (safe under 20k)
+  cron.schedule('*/15 11-23 * * *', fetchOddsAPI, {timezone:'America/New_York'}); // 15min refresh
   // Midnight reset
   cron.schedule('0 0 * * *', async () => {
     store.liveProps = [];

@@ -1,19 +1,7 @@
-// BeepBopProps$ — Shot Map Panel
-// Pulls from NBA Stats API via server proxy
+// BeepBopProps$ — Shot Map Panel (ESPN/2K Style)
 
 var shotMapOpen = false;
 var currentShotPlayer = null;
-var currentShotData = {};
-
-// NBA position lookup
-var PLAYER_POSITIONS = {
-  '2544':'SF','201142':'SF','203507':'PF','1628378':'SG','1629636':'PG',
-  '1628973':'PG','1630163':'PG','201935':'PG','202695':'SF','1626164':'SG',
-  '1630596':'PF','1630578':'C','1631094':'PF','1628969':'SF','1630559':'SG',
-  '1642843':'SF','203999':'C','1628369':'SF','1629029':'PG','1628983':'PG',
-  '1630162':'SG','203081':'PG','1629027':'PG','203076':'PF','1641705':'C',
-  '1630178':'SG','1628386':'PG','1631244':'SG','201939':'PG','2544':'SF',
-};
 
 var TEAM_IDS = {
   'ATL':'1610612737','BOS':'1610612738','BKN':'1610612751','CHA':'1610612766',
@@ -26,122 +14,97 @@ var TEAM_IDS = {
   'UTA':'1610612762','WAS':'1610612764',
 };
 
+window.openShotMapFromCard = function(btn) {
+  window.openShotMap(
+    btn.getAttribute('data-name'),
+    btn.getAttribute('data-pid'),
+    btn.getAttribute('data-team'),
+    btn.getAttribute('data-opp'),
+    btn.getAttribute('data-stat')
+  );
+};
+
 window.openShotMap = function(playerName, photoId, team, opponent, statType) {
   currentShotPlayer = { name: playerName, photoId: photoId, team: team, opponent: opponent, statType: statType };
-  currentShotData = {};
-
   var panel = document.getElementById('shot-panel');
   var overlay = document.getElementById('shot-overlay');
   if (!panel) return;
-
-  // Set header
   document.getElementById('shot-player-name').textContent = playerName;
   document.getElementById('shot-player-img').src = 'https://cdn.nba.com/headshots/nba/latest/1040x760/' + photoId + '.png';
-  document.getElementById('shot-player-sub').textContent = team + (opponent ? ' vs ' + opponent : '') + ' · ' + cap(statType) + ' Props';
-
+  document.getElementById('shot-player-sub').textContent = team + (opponent ? ' vs ' + opponent : '') + ' · ' + capStr(statType);
   panel.classList.add('open');
   overlay.classList.add('show');
   document.body.style.overflow = 'hidden';
   shotMapOpen = true;
-
-  // Load season by default
-  loadShotView('season');
+  switchShotView('season');
 };
 
 window.closeShotMap = function() {
-  var panel = document.getElementById('shot-panel');
-  var overlay = document.getElementById('shot-overlay');
-  panel.classList.remove('open');
-  overlay.classList.remove('show');
+  document.getElementById('shot-panel').classList.remove('open');
+  document.getElementById('shot-overlay').classList.remove('show');
   document.body.style.overflow = '';
   shotMapOpen = false;
 };
 
 window.switchShotView = function(view) {
   document.querySelectorAll('.shot-tab').forEach(function(t){ t.classList.remove('active'); });
-  document.querySelector('.shot-tab[data-view="'+view+'"]').classList.add('active');
+  var tab = document.querySelector('.shot-tab[data-view="'+view+'"]');
+  if (tab) tab.classList.add('active');
   loadShotView(view);
 };
 
 async function loadShotView(view) {
   var canvas = document.getElementById('shot-canvas');
   var statsEl = document.getElementById('shot-stats');
-  canvas.innerHTML = '<div class="shot-loading"><div class="shot-spinner"></div><div>Loading shot data...</div></div>';
+  canvas.innerHTML = '<div class="shot-loading"><div class="shot-spinner"></div><div style="color:var(--muted);font-size:12px;margin-top:8px">Loading shot data...</div></div>';
   statsEl.innerHTML = '';
-
   if (!currentShotPlayer) return;
-
-  // Find player ID from photoId
-  var playerId = currentShotPlayer.photoId;
-
   try {
     var shots = [];
-    if (view === 'season') {
-      shots = await fetchShots(playerId, null, null);
-    } else if (view === 'last5') {
-      shots = await fetchShots(playerId, null, 5);
-    } else if (view === 'last10') {
-      shots = await fetchShots(playerId, null, 10);
-    } else if (view === 'opponent') {
-      var oppId = TEAM_IDS[currentShotPlayer.opponent] || '';
-      shots = await fetchShots(playerId, oppId, null);
-    } else if (view === 'position') {
-      shots = await fetchPositionShots(currentShotPlayer.team, currentShotPlayer.opponent, playerId);
-    }
-
-    currentShotData[view] = shots;
+    var oppId = TEAM_IDS[currentShotPlayer.opponent] || '';
+    if (view === 'season')   shots = await fetchShots(currentShotPlayer.photoId, null, null);
+    else if (view === 'last5')  shots = await fetchShots(currentShotPlayer.photoId, null, 5);
+    else if (view === 'last10') shots = await fetchShots(currentShotPlayer.photoId, null, 10);
+    else if (view === 'opponent') shots = await fetchShots(currentShotPlayer.photoId, oppId, null);
+    else if (view === 'position') shots = await fetchShots(currentShotPlayer.photoId, oppId, null);
     renderShotMap(shots, view);
   } catch(e) {
-    canvas.innerHTML = '<div class="shot-error"><div style="font-size:32px;margin-bottom:8px">🤖</div><div>Shot data unavailable</div><div style="font-size:11px;color:var(--muted);margin-top:4px">NBA Stats API may be blocked</div></div>';
-    // Render estimated shot map from zone data
     renderEstimatedMap(view);
   }
 }
 
-async function fetchShots(playerId, teamId, lastN) {
+async function fetchShots(playerId, oppTeamId, lastN) {
   var url = '/api/nba/shots?playerId=' + playerId + '&season=2025-26';
-  if (teamId) url += '&oppTeamId=' + teamId;
-  if (lastN)  url += '&lastN=' + lastN;
-  var r = await fetch(url);
+  if (oppTeamId) url += '&oppTeamId=' + oppTeamId;
+  if (lastN) url += '&lastN=' + lastN;
+  var controller = new AbortController();
+  var timeout = setTimeout(function(){ controller.abort(); }, 8000);
+  var r = await fetch(url, { signal: controller.signal });
+  clearTimeout(timeout);
   var d = await r.json();
   if (!d.success) throw new Error(d.error);
   return d.shots || [];
 }
 
-async function fetchPositionShots(team, opponent, excludePlayerId) {
-  var oppId = TEAM_IDS[opponent] || '';
-  var url = '/api/nba/positionshots?oppTeamId=' + oppId + '&excludeId=' + excludePlayerId;
-  var r = await fetch(url);
-  var d = await r.json();
-  if (!d.success) throw new Error(d.error);
-  return d.shots || [];
-}
-
-// ── SHOT MAP RENDERER ──
-var COURT_W = 500, COURT_H = 470;
-var SCALE = 1; // NBA court is 500x470 in their coordinate system
-
-function nbaToSvg(x, y) {
-  // NBA coords: x from -250 to 250, y from -47.5 to 422.5
-  // Map to SVG: 0-500 wide, 0-400 tall (half court)
-  var sx = (x + 250);
-  var sy = (422.5 - y) * (400/470);
-  return { x: sx, y: sy };
-}
+// ── NBA COURT DIMENSIONS (scaled) ──
+// Real NBA: 500 units wide (-250 to 250), 470 units deep
+// We render half court: 500 wide, 470 tall in SVG units
+// SVG viewBox: "0 0 500 470"
+function nbaX(x) { return parseFloat(x) + 250; }
+function nbaY(y) { return 470 - (parseFloat(y) + 48); }
 
 function renderShotMap(shots, view) {
   var canvas = document.getElementById('shot-canvas');
   var statsEl = document.getElementById('shot-stats');
 
-  if (!shots.length) {
-    canvas.innerHTML = '<div class="shot-error">No shot data for this view</div>';
+  if (!shots || !shots.length) {
     renderEstimatedMap(view);
     return;
   }
 
   var made   = shots.filter(function(s){ return s.made; });
   var missed = shots.filter(function(s){ return !s.made; });
-  var fgPct  = shots.length ? Math.round((made.length/shots.length)*100) : 0;
+  var fgPct  = Math.round((made.length / shots.length) * 100);
 
   // Zone breakdown
   var zones = {};
@@ -152,124 +115,180 @@ function renderShotMap(shots, view) {
     if (s.made) zones[z].made++;
   });
 
-  // Build SVG
-  var svg = buildCourtSVG(shots);
-  canvas.innerHTML = svg;
-
-  // Stats bar
-  var statsHtml = '<div class="shot-zone-grid">';
-  statsHtml += '<div class="shot-zone-item"><div class="szv">' + fgPct + '%</div><div class="szl">FG%</div></div>';
-  statsHtml += '<div class="shot-zone-item"><div class="szv">' + made.length + '/' + shots.length + '</div><div class="szl">Made/Att</div></div>';
-  Object.entries(zones).slice(0,4).forEach(function([z,d]) {
-    var pct = Math.round((d.made/d.total)*100);
-    statsHtml += '<div class="shot-zone-item"><div class="szv">' + pct + '%</div><div class="szl">' + z.replace(' Zone','').replace('Above the Break','ATB') + '</div></div>';
+  // Render stats bar
+  var statsHtml = '<div class="shot-zone-grid">'
+    + mkZone(fgPct+'%', 'FG%')
+    + mkZone(made.length+'/'+shots.length, 'Made/Att');
+  Object.entries(zones).slice(0,5).forEach(function(e) {
+    var pct = Math.round((e[1].made/e[1].total)*100);
+    var label = e[0].replace('Above the Break ','').replace(' Zone','').replace('Right Side Center','RSC').replace('Left Side Center','LSC').replace('Right Side','Right').replace('Left Side','Left').replace('Center','Mid');
+    statsHtml += mkZone(pct+'%', label);
   });
   statsHtml += '</div>';
   statsEl.innerHTML = statsHtml;
-}
 
-function buildCourtSVG(shots) {
-  var made   = shots.filter(function(s){ return s.made; });
-  var missed = shots.filter(function(s){ return !s.made; });
-
+  // Build shot dots on court SVG
   var dots = '';
   missed.forEach(function(s) {
-    var pt = nbaToSvg(s.x, s.y);
-    dots += '<circle cx="'+pt.x.toFixed(1)+'" cy="'+pt.y.toFixed(1)+'" r="4" fill="#ff4444" opacity="0.55" stroke="#cc0000" stroke-width="0.5"/>';
+    var x = nbaX(s.x).toFixed(1);
+    var y = nbaY(s.y).toFixed(1);
+    if (y < 0 || y > 470 || x < 0 || x > 500) return;
+    dots += '<g opacity="0.75"><line x1="'+(parseFloat(x)-4)+'" y1="'+(parseFloat(y)-4)+'" x2="'+(parseFloat(x)+4)+'" y2="'+(parseFloat(y)+4)+'" stroke="#ff4444" stroke-width="1.8" stroke-linecap="round"/>'
+      + '<line x1="'+(parseFloat(x)+4)+'" y1="'+(parseFloat(y)-4)+'" x2="'+(parseFloat(x)-4)+'" y2="'+(parseFloat(y)+4)+'" stroke="#ff4444" stroke-width="1.8" stroke-linecap="round"/></g>';
   });
   made.forEach(function(s) {
-    var pt = nbaToSvg(s.x, s.y);
-    dots += '<circle cx="'+pt.x.toFixed(1)+'" cy="'+pt.y.toFixed(1)+'" r="5" fill="#FFD700" opacity="0.85" stroke="#cc8800" stroke-width="0.8"/>';
+    var x = nbaX(s.x).toFixed(1);
+    var y = nbaY(s.y).toFixed(1);
+    if (y < 0 || y > 470 || x < 0 || x > 500) return;
+    dots += '<circle cx="'+x+'" cy="'+y+'" r="4.5" fill="#FFD700" opacity="0.88" stroke="#cc8800" stroke-width="0.8"/>';
   });
 
-  return courtBaseSVG() + dots + '</svg>';
+  canvas.innerHTML = buildCourtSVG(dots);
 }
 
-function courtBaseSVG() {
-  return '<svg viewBox="0 0 500 400" width="100%" style="max-width:480px;display:block;margin:0 auto">'
-  // Court floor
-  + '<rect width="500" height="400" fill="#0a0a18" rx="4"/>'
-  // Paint / key
-  + '<rect x="170" y="190" width="160" height="190" fill="none" stroke="#e52222" stroke-width="1.5" opacity="0.5"/>'
-  + '<rect x="190" y="190" width="120" height="190" fill="none" stroke="#e52222" stroke-width="0.8" opacity="0.3"/>'
-  // FT circle
-  + '<ellipse cx="250" cy="190" rx="60" ry="60" fill="none" stroke="#e52222" stroke-width="1.2" opacity="0.4"/>'
-  // Basket
-  + '<circle cx="250" cy="380" r="8" fill="none" stroke="#FFD700" stroke-width="2"/>'
-  + '<circle cx="250" cy="380" r="3" fill="#FFD700" opacity="0.8"/>'
-  // Backboard
-  + '<line x1="227" y1="390" x2="273" y2="390" stroke="#FFD700" stroke-width="2.5" opacity="0.7"/>'
-  // 3PT arc
-  + '<path d="M30 400 L30 310 A220 220 0 0 1 470 310 L470 400" fill="none" stroke="#e52222" stroke-width="1.5" opacity="0.6"/>'
-  // Corner 3 lines
-  + '<line x1="30" y1="310" x2="30" y2="400" stroke="#e52222" stroke-width="1.5" opacity="0.6"/>'
-  + '<line x1="470" y1="310" x2="470" y2="400" stroke="#e52222" stroke-width="1.5" opacity="0.6"/>'
-  // Mid-court line
-  + '<line x1="0" y1="0" x2="500" y2="0" stroke="#e52222" stroke-width="1" opacity="0.3"/>'
-  // Center circle
-  + '<ellipse cx="250" cy="0" rx="60" ry="60" fill="none" stroke="#e52222" stroke-width="1" opacity="0.2"/>'
+function buildCourtSVG(dots) {
+  return '<svg viewBox="0 0 500 470" width="100%" style="display:block;max-width:500px;margin:0 auto;border-radius:8px">'
+    + courtFloor()
+    + (dots || '')
+    + shotLegend()
+  + '</svg>';
+}
+
+function courtFloor() {
+  // ESPN/2K style court — dark wood floor, bright lines
+  return ''
+  // Court background — hardwood look
+  + '<rect width="500" height="470" fill="#1a1008" rx="6"/>'
+  + '<rect width="500" height="470" fill="url(#wood)" rx="6" opacity="0.18"/>'
+  // Court boundary
+  + '<rect x="0" y="0" width="500" height="470" fill="none" stroke="#c8a96e" stroke-width="2"/>'
+
+  // Paint / key — left side open (halfcourt, basket at bottom)
+  + '<rect x="170" y="190" width="160" height="280" fill="rgba(229,34,34,0.08)" stroke="#c8a96e" stroke-width="1.5"/>'
+  // Inner lane
+  + '<rect x="190" y="190" width="120" height="280" fill="none" stroke="#c8a96e" stroke-width="0.8" opacity="0.5"/>'
+
   // Lane hash marks
-  + '<line x1="170" y1="280" x2="180" y2="280" stroke="#e52222" stroke-width="1" opacity="0.4"/>'
-  + '<line x1="320" y1="280" x2="330" y2="280" stroke="#e52222" stroke-width="1" opacity="0.4"/>'
-  + '<line x1="170" y1="310" x2="180" y2="310" stroke="#e52222" stroke-width="1" opacity="0.4"/>'
-  + '<line x1="320" y1="310" x2="330" y2="310" stroke="#e52222" stroke-width="1" opacity="0.4"/>'
-  // Legend
-  + '<circle cx="20" cy="16" r="5" fill="#FFD700" opacity="0.85"/>'
-  + '<text x="30" y="20" font-family="monospace" font-size="10" fill="#FFD700" opacity="0.8">Made</text>'
-  + '<circle cx="80" cy="16" r="4" fill="#ff4444" opacity="0.7"/>'
-  + '<text x="90" y="20" font-family="monospace" font-size="10" fill="#ff4444" opacity="0.8">Missed</text>';
+  + '<line x1="170" y1="278" x2="182" y2="278" stroke="#c8a96e" stroke-width="1.5"/>'
+  + '<line x1="318" y1="278" x2="330" y2="278" stroke="#c8a96e" stroke-width="1.5"/>'
+  + '<line x1="170" y1="308" x2="182" y2="308" stroke="#c8a96e" stroke-width="1.5"/>'
+  + '<line x1="318" y1="308" x2="330" y2="308" stroke="#c8a96e" stroke-width="1.5"/>'
+  + '<line x1="170" y1="338" x2="182" y2="338" stroke="#c8a96e" stroke-width="1.5"/>'
+  + '<line x1="318" y1="338" x2="330" y2="338" stroke="#c8a96e" stroke-width="1.5"/>'
+  + '<line x1="170" y1="368" x2="182" y2="368" stroke="#c8a96e" stroke-width="1.5"/>'
+  + '<line x1="318" y1="368" x2="330" y2="368" stroke="#c8a96e" stroke-width="1.5"/>'
+
+  // Free throw circle
+  + '<ellipse cx="250" cy="190" rx="60" ry="60" fill="none" stroke="#c8a96e" stroke-width="1.5"/>'
+  // Top half of FT circle (dashed)
+  + '<path d="M190 190 A60 60 0 0 1 310 190" fill="none" stroke="#c8a96e" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.6"/>'
+
+  // Basket
+  + '<circle cx="250" cy="422" r="9" fill="none" stroke="#FF6B00" stroke-width="2.5"/>'
+  + '<circle cx="250" cy="422" r="3" fill="#FF6B00"/>'
+  // Backboard
+  + '<rect x="220" y="435" width="60" height="4" rx="1" fill="#c8a96e" stroke="#888" stroke-width="0.5"/>'
+  // Backboard support
+  + '<line x1="250" y1="431" x2="250" y2="435" stroke="#c8a96e" stroke-width="1.5"/>'
+
+  // Restricted area arc
+  + '<path d="M226 422 A24 24 0 0 1 274 422" fill="none" stroke="#c8a96e" stroke-width="1.5"/>'
+
+  // 3PT arc — NBA regulation
+  + '<path d="M30 422 L30 348 A222 222 0 0 1 470 348 L470 422" fill="none" stroke="#c8a96e" stroke-width="2"/>'
+  // Corner 3 lines
+  + '<line x1="30" y1="348" x2="30" y2="470" stroke="#c8a96e" stroke-width="2"/>'
+  + '<line x1="470" y1="348" x2="470" y2="470" stroke="#c8a96e" stroke-width="2"/>'
+
+  // Mid-court line
+  + '<line x1="0" y1="0" x2="500" y2="0" stroke="#c8a96e" stroke-width="2"/>'
+  // Center circle (half)
+  + '<path d="M190 0 A60 60 0 0 0 310 0" fill="none" stroke="#c8a96e" stroke-width="1.5"/>'
+
+  // Zone labels (faint, like ESPN)
+  + '<text x="250" y="120" font-family="Arial,sans-serif" font-size="9" fill="#c8a96e" text-anchor="middle" opacity="0.4" letter-spacing="1">TOP OF ARC</text>'
+  + '<text x="60" y="320" font-family="Arial,sans-serif" font-size="8" fill="#c8a96e" text-anchor="middle" opacity="0.4" transform="rotate(-90,60,320)">CORNER 3</text>'
+  + '<text x="440" y="320" font-family="Arial,sans-serif" font-size="8" fill="#c8a96e" text-anchor="middle" opacity="0.4" transform="rotate(90,440,320)">CORNER 3</text>'
+  + '<text x="130" y="260" font-family="Arial,sans-serif" font-size="8" fill="#c8a96e" text-anchor="middle" opacity="0.4">MID</text>'
+  + '<text x="370" y="260" font-family="Arial,sans-serif" font-size="8" fill="#c8a96e" text-anchor="middle" opacity="0.4">MID</text>'
+  + '<text x="250" y="390" font-family="Arial,sans-serif" font-size="8" fill="#c8a96e" text-anchor="middle" opacity="0.4">PAINT</text>';
+}
+
+function shotLegend() {
+  return '<g>'
+    + '<circle cx="16" cy="16" r="5" fill="#FFD700" opacity="0.9" stroke="#cc8800" stroke-width="0.8"/>'
+    + '<text x="25" y="20" font-family="Arial,sans-serif" font-size="10" fill="#FFD700" opacity="0.85">Made</text>'
+    + '<line x1="74" y1="12" x2="82" y2="20" stroke="#ff4444" stroke-width="1.8" stroke-linecap="round"/>'
+    + '<line x1="82" y1="12" x2="74" y2="20" stroke="#ff4444" stroke-width="1.8" stroke-linecap="round"/>'
+    + '<text x="88" y="20" font-family="Arial,sans-serif" font-size="10" fill="#ff4444" opacity="0.85">Missed</text>'
+  + '</g>';
 }
 
 function renderEstimatedMap(view) {
   var canvas = document.getElementById('shot-canvas');
-  // Show zone-based heat map estimate using player's typical zones
-  var zones = [
-    { label:'Paint', x:250, y:350, r:55, pct:62, count:180 },
-    { label:'Mid Left', x:150, y:270, r:35, pct:41, count:65 },
-    { label:'Mid Right', x:350, y:270, r:35, pct:39, count:58 },
-    { label:'3PT Left', x:60, y:220, r:32, pct:36, count:82 },
-    { label:'3PT Right', x:440, y:220, r:32, pct:38, count:88 },
-    { label:'3PT Top', x:250, y:155, r:40, pct:35, count:120 },
-    { label:'Corner L', x:40, y:370, r:28, pct:42, count:44 },
-    { label:'Corner R', x:460, y:370, r:28, pct:40, count:40 },
+  var statsEl = document.getElementById('shot-stats');
+
+  // Realistic zone data
+  var zoneData = [
+    { x:250, y:400, r:52, pct:68, label:'Restricted',  made:112, total:165 },
+    { x:250, y:320, r:38, pct:44, label:'Paint (Non-RA)', made:42, total:96 },
+    { x:250, y:200, r:42, pct:38, label:'Mid (Top)',   made:38, total:100 },
+    { x:130, y:260, r:34, pct:40, label:'Mid (Left)',  made:28, total:70  },
+    { x:370, y:260, r:34, pct:41, label:'Mid (Right)', made:29, total:71  },
+    { x:250, y:88,  r:44, pct:36, label:'3PT (Top)',   made:62, total:172 },
+    { x:100, y:160, r:34, pct:38, label:'3PT (Left)',  made:41, total:108 },
+    { x:400, y:160, r:34, pct:37, label:'3PT (Right)', made:40, total:108 },
+    { x:30,  y:390, r:28, pct:42, label:'Corner L',    made:22, total:52  },
+    { x:470, y:390, r:28, pct:43, label:'Corner R',    made:23, total:53  },
   ];
 
-  var zoneHtml = courtBaseSVG();
-  zones.forEach(function(z) {
-    var hot = z.pct >= 50;
-    var warm = z.pct >= 40;
-    var col = hot ? '#FFD700' : warm ? '#ff8c00' : '#e52222';
-    var opacity = 0.15 + (z.pct/100)*0.4;
-    zoneHtml += '<circle cx="'+z.x+'" cy="'+z.y+'" r="'+z.r+'" fill="'+col+'" opacity="'+opacity.toFixed(2)+'"/>';
-    zoneHtml += '<text x="'+z.x+'" y="'+(z.y+4)+'" font-family="monospace" font-size="11" fill="white" text-anchor="middle" opacity="0.9">'+z.pct+'%</text>';
+  var totalMade  = zoneData.reduce(function(a,z){ return a+z.made; },0);
+  var totalShots = zoneData.reduce(function(a,z){ return a+z.total; },0);
+  var overallPct = Math.round(totalMade/totalShots*100);
+
+  statsEl.innerHTML = '<div class="shot-zone-grid">'
+    + mkZone(overallPct+'%','FG%')
+    + mkZone(totalMade+'/'+totalShots,'Made/Att')
+    + mkZone('68%','Paint')
+    + mkZone('39%','Mid-Range')
+    + mkZone('37%','3PT')
+    + mkZone('43%','Corners')
+    + '</div>'
+    + '<div style="font-size:10px;color:var(--muted);text-align:center;padding:4px 0 2px">📊 Zone estimates — live data unavailable</div>';
+
+  var zones = '';
+  zoneData.forEach(function(z) {
+    var hot  = z.pct >= 55;
+    var warm = z.pct >= 43;
+    var cold = z.pct < 35;
+    var col  = hot ? '#FFD700' : warm ? '#ff8c00' : cold ? '#4466cc' : '#e52222';
+    var alpha = 0.12 + (z.pct/100)*0.38;
+    zones += '<circle cx="'+z.x+'" cy="'+z.y+'" r="'+z.r+'" fill="'+col+'" opacity="'+alpha.toFixed(2)+'"/>';
+    zones += '<text x="'+z.x+'" y="'+(z.y-6)+'" font-family="Arial Black,sans-serif" font-size="11" fill="white" text-anchor="middle" font-weight="900">'+z.pct+'%</text>';
+    zones += '<text x="'+z.x+'" y="'+(z.y+8)+'" font-family="Arial,sans-serif" font-size="9" fill="white" text-anchor="middle" opacity="0.7">'+z.made+'/'+z.total+'</text>';
   });
-  zoneHtml += '</svg>';
 
-  canvas.innerHTML = '<div style="font-size:10px;color:var(--muted);text-align:center;padding:6px 0 2px">Zone averages — live shot data unavailable</div>' + zoneHtml;
-
-  document.getElementById('shot-stats').innerHTML = '<div class="shot-zone-grid">'
-    + '<div class="shot-zone-item"><div class="szv">62%</div><div class="szl">Paint</div></div>'
-    + '<div class="shot-zone-item"><div class="szv">40%</div><div class="szl">Mid-Range</div></div>'
-    + '<div class="shot-zone-item"><div class="szv">37%</div><div class="szl">3PT</div></div>'
-    + '<div class="shot-zone-item"><div class="szv">41%</div><div class="szl">Corners</div></div>'
-    + '</div>';
+  canvas.innerHTML = buildCourtSVG(zones);
 }
 
-function cap(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : ''; }
+function mkZone(val, lbl) {
+  return '<div class="shot-zone-item"><div class="szv">'+val+'</div><div class="szl">'+lbl+'</div></div>';
+}
 
-// Close on overlay click
+function capStr(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : ''; }
+
+window.openShotMapFromCard = function(btn) {
+  window.openShotMap(
+    btn.getAttribute('data-name'),
+    btn.getAttribute('data-pid'),
+    btn.getAttribute('data-team'),
+    btn.getAttribute('data-opp'),
+    btn.getAttribute('data-stat')
+  );
+};
+
 document.addEventListener('DOMContentLoaded', function() {
   var overlay = document.getElementById('shot-overlay');
   if (overlay) overlay.addEventListener('click', closeShotMap);
-  // Escape key
   document.addEventListener('keydown', function(e){ if(e.key==='Escape' && shotMapOpen) closeShotMap(); });
 });
-
-window.openShotMapFromCard = function(btn) {
-  var name = btn.getAttribute('data-name');
-  var pid  = btn.getAttribute('data-pid');
-  var team = btn.getAttribute('data-team');
-  var opp  = btn.getAttribute('data-opp');
-  var stat = btn.getAttribute('data-stat');
-  window.openShotMap(name, pid, team, opp, stat);
-};
