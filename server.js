@@ -262,6 +262,41 @@ async function fetchOddsAPI() {
   }
 }
 
+
+// Player name → NBA photo ID lookup for live props
+const PHOTO_IDS = {
+  'LeBron James':'2544','Kevin Durant':'201142','Giannis Antetokounmpo':'203507',
+  'Kawhi Leonard':'202695','Devin Booker':'1626164','Donovan Mitchell':'1628378',
+  'Mikal Bridges':'1628969','James Harden':'201935','Evan Mobley':'1630596',
+  'Darius Garland':'1629636','LaMelo Ball':'1630163','Alperen Sengun':'1630578',
+  'Paolo Banchero':'1631094','Jalen Brunson':'1628973','Austin Reaves':'1630559',
+  'Cooper Flagg':'1642843','Stephen Curry':'201939','Nikola Jokic':'203999',
+  'Jayson Tatum':'1628369','Luka Doncic':'1629029','Shai Gilgeous-Alexander':'1628983',
+  'Tyrese Maxey':'1630178','Victor Wembanyama':'1641705','Anthony Edwards':'1630162',
+  'Jaylen Brown':'1627759','Joel Embiid':'203954','Bam Adebayo':'1628389',
+  'Trae Young':'1629027','Anthony Davis':'203076','Damian Lillard':'203081',
+  'Chet Holmgren':'1631096',"DeAaron Fox":"1628368",'Jamal Murray':'1627750',
+  'Ja Morant':'1629630','Draymond Green':'203110','Tyler Herro':'1629639',
+  'Matas Buzelis':'1642267','Paolo Banchero':'1631094','Franz Wagner':'1630532',
+  'Jalen Johnson':'1630552','Dyson Daniels':'1631107','Desmond Bane':'1630217',
+  "Jalen Suggs":"1630534",'Jonathan Kuminga':'1630557',"Onyeka Okongwu":"1630534",
+  'Wendell Carter Jr':'1629057','Tristan da Silva':'1641848','Jock Landale':'1628990',
+  'Nickeil Alexander-Walker':'1629634','C.J. McCollum':'203468',
+  'Karl-Anthony Towns':'1626157','Josh Hart':'1628404','OG Anunoby':'1628384',
+  'Scottie Barnes':'1630567','Immanuel Quickley':'1630193','RJ Barrett':'1629628',
+  'Lauri Markkanen':'1628374','Jordan Clarkson':'203903','Collin Sexton':'1629012',
+  'Walker Kessler':'1631105','John Collins':'1628381','Tari Eason':'1631108',
+  'Amen Thompson':'1641706','Fred VanVleet':'2562551','Deni Avdija':'1630166',
+  'Anfernee Simons':'1629014','Jerami Grant':'203924','Jusuf Nurkic':'203994',
+  'Norman Powell':'1626181','Josh Giddey':'1630581','Coby White':'1629632',
+  'Nikola Vucevic':'202696','Patrick Williams':'1630176','Zach LaVine':'203897',
+  'DeMar DeRozan':'201942','Brook Lopez':'201572','Khris Middleton':'203114',
+  'Bobby Portis':'1626187','Grayson Allen':'1628960','Kyle Kuzma':'1628398',
+  'Jordan Poole':'1629673','Alexandre Sarr':'1642356','Bilal Coulibaly':'1641848',
+  'James Wiseman':'1630164','Cade Cunningham':'1630595','Bojan Bogdanovic':'202711',
+  'Tobias Harris':'202699','Kelly Oubre Jr':'1626162','Paul George':'202331',
+};
+
 function processOddsData(games) {
   const propsMap = {};
   for (const game of games) {
@@ -314,10 +349,12 @@ function processOddsData(games) {
     }
     const tier = conf >= 75 ? 'elite' : conf >= 63 ? 'strong' : conf >= 50 ? 'neutral' : 'fade';
 
+    const photoId = PHOTO_IDS[p.playerName] || '0';
     props.push({
       playerName: p.playerName, gameId: p.gameId,
       statType: p.statType, direction: 'over',
       line: ml, confidence: conf, tier,
+      nbaPhotoId: photoId,
       dkLine: dk?.line||ml,  dkOdds:  fmt(dk),
       fdLine: fd?.line||ml,  fdOdds:  fmt(fd),
       mgmLine:mgm?.line||ml, mgmOdds: fmt(mgm),
@@ -611,7 +648,8 @@ Answer the users NBA question in a helpful, conversational way. Be specific with
     res.json({ success:true, answer, gameLog });
   } catch(e) {
     console.error('AI stats error:', e.message);
-    res.status(500).json({ success:false, error: e.message });
+    // Return a helpful fallback instead of failing
+    res.json({ success:true, answer: 'I had trouble connecting right now. Try asking again in a moment! In the meantime check the game logs above for the stats you need.' });
   }
 });
 
