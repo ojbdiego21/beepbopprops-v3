@@ -209,51 +209,56 @@ function getWinProb(homeTeam, awayTeam, spread, rawHome) {
 }
 
 
-// ── ODDS API — paid tier, all games + all books in one call ──
+// ── ODDS API — event-by-event endpoint (required for player props on all plans) ──
 async function fetchOddsAPI() {
   const KEY = process.env.ODDS_API_KEY;
-  if (!KEY) { console.log('⚠️ No ODDS_API_KEY set'); return; }
+  if (!KEY) { console.log('⚠️  No ODDS_API_KEY set'); return; }
   try {
-    // 7 markets × 1 region = 7 credits per call
-    // 4 calls/hr × 12hr × 30days × 7 = ~10,080 credits/month (well under 20k limit)
     const MARKETS = [
       'player_points','player_rebounds','player_assists',
       'player_threes','player_blocks','player_steals',
       'player_points_rebounds_assists',
     ].join(',');
 
-    const BOOKS = 'draftkings,fanduel,betmgm,caesars,pointsbet,mybookieag,betonlineag';
+    // Step 1: get event IDs — free, no credits used
+    const eventsRes = await axios.get(
+      'https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey=' + KEY,
+      { timeout: 10000 }
+    );
+    const events = eventsRes.data || [];
+    const rem = eventsRes.headers['x-requests-remaining'] || '?';
+    console.log('📊 Odds API: ' + events.length + ' events | ' + rem + ' credits remaining');
 
-    // Paid plan: single call returns ALL games + ALL player prop markets at once
-    const url = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/'
-      + '?apiKey=' + KEY
-      + '&regions=us'
-      + '&markets=' + MARKETS
-      + '&oddsFormat=american'
-      + '&bookmakers=' + BOOKS;
-
-    const { data, headers } = await axios.get(url, { timeout: 20000 });
-
-    // Log remaining quota
-    const remaining = headers['x-requests-remaining'] || '?';
-    const used      = headers['x-requests-used'] || '?';
-    console.log('📊 Odds API: ' + data.length + ' games | ' + remaining + ' requests remaining this month (used: ' + used + ')');
-
-    if (!data.length) {
-      console.log('⚠️ Odds API: no games returned — lines not posted yet');
+    if (!events.length) {
+      console.log('⚠️  No NBA events — lines not posted yet or season over');
       return;
     }
 
-    processOddsData(data);
+    // Step 2: fetch props per event using EVENT endpoint (the only valid endpoint for player props)
+    // DO NOT use regions + bookmakers together — causes 422
+    const allGames = [];
+    for (const event of events) {
+      try {
+        const url = 'https://api.the-odds-api.com/v4/sports/basketball_nba/events/'
+          + event.id + '/odds'
+          + '?apiKey=' + KEY
+          + '&regions=us'
+          + '&markets=' + MARKETS
+          + '&oddsFormat=american';
+        const res = await axios.get(url, { timeout: 10000 });
+        if (res.data && res.data.bookmakers && res.data.bookmakers.length) {
+          allGames.push(res.data);
+        }
+      } catch(e) {
+        console.log('⚠️  Event ' + event.id + ': ' + (e.response ? e.response.status : e.message));
+      }
+    }
+    console.log('📊 Odds API: props for ' + allGames.length + '/' + events.length + ' games');
+    processOddsData(allGames);
 
   } catch(e) {
     console.error('❌ Odds API error:', e.message);
-    if (e.response && e.response.status === 401) {
-      console.error('❌ Invalid API key — check ODDS_API_KEY in Railway');
-    }
-    if (e.response && e.response.status === 429) {
-      console.error('❌ Rate limited — too many requests');
-    }
+    if (e.response) console.error('   Status:', e.response.status, JSON.stringify(e.response.data||'').slice(0,150));
   }
 }
 
