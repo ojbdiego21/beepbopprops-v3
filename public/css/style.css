@@ -417,3 +417,24 @@ footer{background:var(--dkblue);border-top:1px solid var(--bord);padding:14px;te
   cursor:pointer;white-space:nowrap;transition:all .2s;
 }
 .stats-btn:hover{ background:var(--dkred); }
+
+/* ── 7 BOOKS GRID ── */
+.books7{ display:grid; grid-template-columns:repeat(4,1fr); gap:3px; margin-top:6px; }
+.books7 .bk:nth-child(5),
+.books7 .bk:nth-child(6),
+.books7 .bk:nth-child(7){ }
+@media(max-width:400px){ .books7{ grid-template-columns:repeat(3,1fr); } }
+.bkname.ud{ color:#f59e0b; }
+
+/* ── STATS GAME LOG ── */
+.stats-log-wrap{ margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px; }
+.stats-log-avgs{ display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap; }
+.stats-log-avg{ background:rgba(255,255,255,.05);border-radius:6px;padding:6px 10px;text-align:center;flex:1;min-width:50px; }
+.sla-val{ font-family:'Bebas Neue',cursive;font-size:20px;color:var(--gold); }
+.sla-lbl{ font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px; }
+.stats-log-table{ width:100%;border-collapse:collapse;font-size:11px;min-width:480px; }
+.stats-log-table th{ padding:5px 8px;text-align:center;color:var(--muted);font-size:9px;font-weight:600;border-bottom:1px solid var(--bord);background:var(--surf2); }
+.stats-log-table th:first-child{ text-align:left; }
+.stats-log-table td{ padding:5px 8px;text-align:center;border-bottom:1px solid rgba(255,255,255,.03); }
+.stats-log-table td:first-child{ text-align:left; }
+.stats-log-table tr:last-child td{ border-bottom:none; }

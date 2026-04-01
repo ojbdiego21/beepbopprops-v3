@@ -110,21 +110,22 @@ function buildPropCard(p) {
   var rc   = t==='elite'?'#FFD700':t==='strong'?'#00D4AA':t==='neutral'?'#60a5fa':'#ff5555';
   var pid  = p.nbaPhotoId || '0';
   var bookLines = [
-    { key:'dk',  name:'DraftKings', line: p.dkLine,  odds: p.dkOdds  },
-    { key:'fd',  name:'FanDuel',    line: p.fdLine,   odds: p.fdOdds  },
-    { key:'mgm', name:'BetMGM',     line: p.mgmLine,  odds: p.mgmOdds },
-    { key:'czr', name:'Caesars',    line: p.czrLine,  odds: p.czrOdds },
-    { key:'pp',  name:'PrizePicks', line: p.ppLine,   odds: 'More'    },
-    { key:'reb', name:'Rebet',      line: p.rebetLine,odds: p.rebetOdds },
+    { key:'dk',  name:'DraftKings', line: p.dkLine,   odds: p.dkOdds   },
+    { key:'fd',  name:'FanDuel',    line: p.fdLine,   odds: p.fdOdds   },
+    { key:'mgm', name:'BetMGM',     line: p.mgmLine,  odds: p.mgmOdds  },
+    { key:'czr', name:'Caesars',    line: p.czrLine,  odds: p.czrOdds  },
+    { key:'pp',  name:'PrizePicks', line: p.ppLine,   odds: 'More'     },
+    { key:'ud',  name:'Underdog',   line: p.udLine,   odds: p.udOdds   },
+    { key:'reb', name:'Rebet',      line: p.rebetLine,odds: p.rebetOdds},
   ];
   var validLines = bookLines.filter(function(b){ return b.line != null; });
   var bestLine   = validLines.length ? Math.min.apply(null, validLines.map(function(b){ return b.line; })) : p.line;
-  var booksHtml = '<div class="books6">';
+  var booksHtml = '<div class="books7">';
   bookLines.forEach(function(b) {
     var isBest = b.line != null && b.line === bestLine && p.direction === 'over';
     booksHtml += '<div class="bk' + (isBest?' best-line':'') + '"><div class="bkname '+b.key+'">'+b.name+'</div><div class="bknum">'+(b.line != null ? b.line : '--')+'</div><div class="bkodds">'+(b.odds||'--')+'</div></div>';
   });
-  booksHtml += '</div>';
+  booksHtml += '</div>'; // end books7
   var pickId = (pid + '_' + p.statType + '_' + (p.team||'')).replace(/[^a-z0-9_]/gi,'_');
   var safeLabel = (p.playerName+' '+cap(p.statType)+' '+(p.direction||'over').toUpperCase()+' '+(p.line||p.dkLine||'?')).replace(/'/g,"\\'");
   var safeName  = (p.playerName||'').replace(/'/g,"\\'");

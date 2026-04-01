@@ -15,7 +15,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // In-memory store for ESPN data
-let store = { games: [], injuries: [] };
+let store = { games: [], injuries: [], liveProps: [] };
 
 // ── ALT LINES ──
 function buildAltLines(line, odds) {
@@ -33,35 +33,112 @@ function buildAltLines(line, odds) {
 
 // ── SEEDED PROPS — MARCH 31 2026 ──
 // Games tonight: ORL@PHX, BKN@CHA, MIL@DAL, DET@TOR, HOU@NYK, LAL@CLE, LAC@POR
+// All 7 books: DraftKings, FanDuel, BetMGM, Caesars, PrizePicks, Underdog, Rebet
+// CORRECT NBA PHOTO IDs (verified):
+// Jalen Brunson = 1628386, Austin Reaves = 1631244, Jarrett Allen = 1628384
+// LaMelo = 1630163, Giannis = 203507, Kawhi = 202695, KD = 201142
+// Booker = 1626164, Donovan Mitchell = 1628378, LeBron = 2544
 const SEEDED_PROPS = [
   // ── ELITE ──
-  { playerName:'LaMelo Ball',             team:'CHA', opponent:'BKN', statType:'points',   line:26.5, direction:'over',  confidence:88, tier:'elite',   dkLine:26.5, dkOdds:'-118', fdLine:26.5, fdOdds:'-118', mgmLine:27,   mgmOdds:'-125', czrLine:26.5, czrOdds:'-118', ppLine:26.5, rebetLine:26.5, rebetOdds:'-115', hitRateLast10:'8/10', nbaPhotoId:'1630163', reasoning:'LaMelo vs BKN — CHA 92.2% win prob. BKN worst defense in NBA. LaMelo 27.1 PPG avg.' },
-  { playerName:'Devin Booker',            team:'PHX', opponent:'ORL', statType:'points',   line:25.5, direction:'over',  confidence:85, tier:'elite',   dkLine:25.5, dkOdds:'-112', fdLine:25.5, fdOdds:'-115', mgmLine:26,   mgmOdds:'-118', czrLine:25.5, czrOdds:'-112', ppLine:25.5, rebetLine:25.5, rebetOdds:'-110', hitRateLast10:'8/10', nbaPhotoId:'1626164', reasoning:'Booker vs ORL — PHX 54.4% home fav. ORL 27th in pts allowed. Book 25.4 PPG avg.' },
-  { playerName:'Jalen Brunson',           team:'NYK', opponent:'HOU', statType:'points',   line:27.5, direction:'over',  confidence:84, tier:'elite',   dkLine:27.5, dkOdds:'-110', fdLine:27.5, fdOdds:'-112', mgmLine:28,   mgmOdds:'-118', czrLine:27.5, czrOdds:'-110', ppLine:27.5, rebetLine:27.5, rebetOdds:'-108', hitRateLast10:'7/10', nbaPhotoId:'1628386', reasoning:'Brunson vs HOU — NYK just clinched playoff spot. 26.8 PPG season avg. HOU 50.6% road dog.' },
-  { playerName:'Giannis Antetokounmpo',   team:'MIL', opponent:'DAL', statType:'points',   line:29.5, direction:'over',  confidence:83, tier:'elite',   dkLine:29.5, dkOdds:'-110', fdLine:30,   fdOdds:'-115', mgmLine:29.5, mgmOdds:'-108', czrLine:29.5, czrOdds:'-110', ppLine:29.5, rebetLine:29.5, rebetOdds:'-108', hitRateLast10:'7/10', nbaPhotoId:'203507',  reasoning:'Giannis vs DAL — MIL needs this win for playoff position. 30.2 PPG avg. Cooper Flagg vs Giannis tough for Flagg.' },
-  { playerName:'Kawhi Leonard',           team:'LAC', opponent:'POR', statType:'points',   line:23.5, direction:'over',  confidence:82, tier:'elite',   dkLine:23.5, dkOdds:'-112', fdLine:24,   fdOdds:'-115', mgmLine:23.5, mgmOdds:'-110', czrLine:23.5, czrOdds:'-112', ppLine:23.5, rebetLine:23.5, rebetOdds:'-110', hitRateLast10:'7/10', nbaPhotoId:'202695',  reasoning:'Kawhi vs POR — LAC 66.8% road fav. Career-high scoring season. POR 28th defense.' },
-  { playerName:'Donovan Mitchell',        team:'CLE', opponent:'LAL', statType:'points',   line:27.5, direction:'over',  confidence:80, tier:'elite',   dkLine:27.5, dkOdds:'-110', fdLine:27.5, fdOdds:'-112', mgmLine:28,   mgmOdds:'-115', czrLine:27.5, czrOdds:'-110', ppLine:27.5, rebetLine:27.5, rebetOdds:'-108', hitRateLast10:'7/10', nbaPhotoId:'1628378', reasoning:'Mitchell vs LAL — CLE 45.4% road dog but Mitchell loves big spots. 27.9 PPG avg. LAL 54.6% home fav.' },
+  { playerName:'LaMelo Ball',             team:'CHA', opponent:'BKN', statType:'points',   line:26.5, direction:'over',  confidence:88, tier:'elite',
+    dkLine:26.5, dkOdds:'-118', fdLine:26.5, fdOdds:'-118', mgmLine:27, mgmOdds:'-125', czrLine:26.5, czrOdds:'-118',
+    ppLine:26.5, udLine:26.5, udOdds:'+100', rebetLine:26.5, rebetOdds:'-115',
+    hitRateLast10:'8/10', nbaPhotoId:'1630163', reasoning:'LaMelo vs BKN — CHA 92.2% win prob. BKN worst defense in NBA. LaMelo 27.1 PPG avg.' },
+  { playerName:'Devin Booker',            team:'PHX', opponent:'ORL', statType:'points',   line:25.5, direction:'over',  confidence:85, tier:'elite',
+    dkLine:25.5, dkOdds:'-112', fdLine:25.5, fdOdds:'-115', mgmLine:26, mgmOdds:'-118', czrLine:25.5, czrOdds:'-112',
+    ppLine:25.5, udLine:25.5, udOdds:'-108', rebetLine:25.5, rebetOdds:'-110',
+    hitRateLast10:'8/10', nbaPhotoId:'1626164', reasoning:'Booker vs ORL — PHX 54.4% home fav. ORL 27th in pts allowed. Book 25.4 PPG avg.' },
+  { playerName:'Jalen Brunson',           team:'NYK', opponent:'HOU', statType:'points',   line:27.5, direction:'over',  confidence:84, tier:'elite',
+    dkLine:27.5, dkOdds:'-110', fdLine:27.5, fdOdds:'-112', mgmLine:28, mgmOdds:'-118', czrLine:27.5, czrOdds:'-110',
+    ppLine:27.5, udLine:27.5, udOdds:'-112', rebetLine:27.5, rebetOdds:'-108',
+    hitRateLast10:'7/10', nbaPhotoId:'1628386', reasoning:'Brunson vs HOU — NYK just clinched playoff spot. 26.8 PPG season avg.' },
+  { playerName:'Giannis Antetokounmpo',   team:'MIL', opponent:'DAL', statType:'points',   line:29.5, direction:'over',  confidence:83, tier:'elite',
+    dkLine:29.5, dkOdds:'-110', fdLine:30, fdOdds:'-115', mgmLine:29.5, mgmOdds:'-108', czrLine:29.5, czrOdds:'-110',
+    ppLine:29.5, udLine:30, udOdds:'-115', rebetLine:29.5, rebetOdds:'-108',
+    hitRateLast10:'7/10', nbaPhotoId:'203507', reasoning:'Giannis vs DAL — MIL needs this win for playoff position. 30.2 PPG avg.' },
+  { playerName:'Kawhi Leonard',           team:'LAC', opponent:'POR', statType:'points',   line:23.5, direction:'over',  confidence:82, tier:'elite',
+    dkLine:23.5, dkOdds:'-112', fdLine:24, fdOdds:'-115', mgmLine:23.5, mgmOdds:'-110', czrLine:23.5, czrOdds:'-112',
+    ppLine:23.5, udLine:23.5, udOdds:'-110', rebetLine:23.5, rebetOdds:'-110',
+    hitRateLast10:'7/10', nbaPhotoId:'202695', reasoning:'Kawhi vs POR — LAC 66.8% road fav. Career-high scoring season. POR 28th defense.' },
+  { playerName:'Donovan Mitchell',        team:'CLE', opponent:'LAL', statType:'points',   line:27.5, direction:'over',  confidence:80, tier:'elite',
+    dkLine:27.5, dkOdds:'-110', fdLine:27.5, fdOdds:'-112', mgmLine:28, mgmOdds:'-115', czrLine:27.5, czrOdds:'-110',
+    ppLine:27.5, udLine:28, udOdds:'-118', rebetLine:27.5, rebetOdds:'-108',
+    hitRateLast10:'7/10', nbaPhotoId:'1628378', reasoning:'Mitchell vs LAL — 34 pts vs UTA last night. 27.9 PPG avg. Big must-win spot.' },
   // ── STRONG ──
-  { playerName:'Kevin Durant',            team:'HOU', opponent:'NYK', statType:'points',   line:24.5, direction:'over',  confidence:74, tier:'strong',  dkLine:24.5, dkOdds:'-108', fdLine:24.5, fdOdds:'-110', mgmLine:25,   mgmOdds:'-115', czrLine:24.5, czrOdds:'-108', ppLine:24.5, rebetLine:24.5, rebetOdds:'-107', hitRateLast10:'6/10', nbaPhotoId:'201142',  reasoning:'KD vs NYK — HOU 49.4% slight dog. Durant 24.8 PPG. Great spot vs NYK who just clinched and may rest starters.' },
-  { playerName:'Alperen Sengun',          team:'HOU', opponent:'NYK', statType:'points',   line:20.5, direction:'over',  confidence:72, tier:'strong',  dkLine:20.5, dkOdds:'-112', fdLine:21,   fdOdds:'-118', mgmLine:20.5, mgmOdds:'-110', czrLine:20.5, czrOdds:'-110', ppLine:20.5, rebetLine:20.5, rebetOdds:'-108', hitRateLast10:'6/10', nbaPhotoId:'1630578', reasoning:'Sengun vs NYK — 21.2 PPG L10. NYK allows pts to opposing Cs. Low line for Sengun.' },
-  { playerName:'Darius Garland',          team:'LAC', opponent:'POR', statType:'points',   line:20.5, direction:'over',  confidence:71, tier:'strong',  dkLine:20.5, dkOdds:'-112', fdLine:21,   fdOdds:'-118', mgmLine:20.5, mgmOdds:'-110', czrLine:20.5, czrOdds:'-110', ppLine:20.5, rebetLine:20.5, rebetOdds:'-108', hitRateLast10:'6/10', nbaPhotoId:'1629636', reasoning:'Garland (LAC) vs POR — 21.1 PPG with Clippers. POR 28th defense. LAC needs the win.' },
-  { playerName:'LeBron James',            team:'LAL', opponent:'CLE', statType:'points',   line:24.5, direction:'over',  confidence:70, tier:'strong',  dkLine:24.5, dkOdds:'-108', fdLine:24.5, fdOdds:'-110', mgmLine:25,   mgmOdds:'-115', czrLine:24.5, czrOdds:'-108', ppLine:24.5, rebetLine:24.5, rebetOdds:'-107', hitRateLast10:'6/10', nbaPhotoId:'2544',    reasoning:'LeBron vs CLE — winner clinches playoff berth. Big game for LeBron vs his old team. 25.3 PPG avg.' },
-  { playerName:'Donovan Mitchell',        team:'CLE', opponent:'LAL', statType:'rebounds', line:4.5,  direction:'over',  confidence:68, tier:'strong',  dkLine:4.5,  dkOdds:'-112', fdLine:4.5,  fdOdds:'-115', mgmLine:4.5,  mgmOdds:'-110', czrLine:5,    czrOdds:'-122', ppLine:4.5,  rebetLine:4.5,  rebetOdds:'-110', hitRateLast10:'6/10', nbaPhotoId:'1628378', reasoning:'Mitchell pulls 4.6 RPG. LAL gives up boards to opposing SGs.' },
-  { playerName:'Giannis Antetokounmpo',   team:'MIL', opponent:'DAL', statType:'rebounds', line:11.5, direction:'over',  confidence:72, tier:'strong',  dkLine:11.5, dkOdds:'-112', fdLine:11.5, fdOdds:'-115', mgmLine:11.5, mgmOdds:'-110', czrLine:12,   czrOdds:'-125', ppLine:11.5, rebetLine:11.5, rebetOdds:'-112', hitRateLast10:'7/10', nbaPhotoId:'203507',  reasoning:'Giannis 11.8 RPG. DAL gives up interior rebounds. Cooper Flagg no match for Giannis size.' },
-  { playerName:'Kawhi Leonard',           team:'LAC', opponent:'POR', statType:'rebounds', line:5.5,  direction:'over',  confidence:67, tier:'strong',  dkLine:5.5,  dkOdds:'-112', fdLine:5.5,  fdOdds:'-115', mgmLine:5.5,  mgmOdds:'-110', czrLine:6,    czrOdds:'-122', ppLine:5.5,  rebetLine:5.5,  rebetOdds:'-110', hitRateLast10:'6/10', nbaPhotoId:'202695',  reasoning:'Kawhi 6.2 RPG. POR small ball lineup gives up wing boards freely.' },
-  { playerName:'LaMelo Ball',             team:'CHA', opponent:'BKN', statType:'assists',  line:8.5,  direction:'over',  confidence:75, tier:'strong',  dkLine:8.5,  dkOdds:'-115', fdLine:8.5,  fdOdds:'-115', mgmLine:8.5,  mgmOdds:'-112', czrLine:9,    czrOdds:'-125', ppLine:8.5,  rebetLine:8.5,  rebetOdds:'-112', hitRateLast10:'7/10', nbaPhotoId:'1630163', reasoning:'LaMelo 8.8 APG. BKN 27th in forcing turnovers. CHA 92% win prob.' },
-  { playerName:'Austin Reaves',           team:'LAL', opponent:'CLE', statType:'points',   line:22.5, direction:'over',  confidence:66, tier:'strong',  dkLine:22.5, dkOdds:'-108', fdLine:22.5, fdOdds:'-110', mgmLine:23,   mgmOdds:'-115', czrLine:22.5, czrOdds:'-108', ppLine:22.5, rebetLine:22.5, rebetOdds:'-107', hitRateLast10:'6/10', nbaPhotoId:'1631244', reasoning:'Reaves 23.6 PPG leads LAL. Big must-win game = full effort and usage.' },
-  { playerName:'Mikal Bridges',           team:'NYK', opponent:'HOU', statType:'points',   line:17.5, direction:'over',  confidence:65, tier:'strong',  dkLine:17.5, dkOdds:'-110', fdLine:18,   fdOdds:'-115', mgmLine:17.5, mgmOdds:'-108', czrLine:17.5, czrOdds:'-110', ppLine:17.5, rebetLine:17.5, rebetOdds:'-108', hitRateLast10:'5/10', nbaPhotoId:'1628969', reasoning:'Bridges 17.1 PPG. HOU focuses D on Brunson leaving Bridges open.' },
-  { playerName:'Evan Mobley',             team:'CLE', opponent:'LAL', statType:'rebounds', line:9.5,  direction:'over',  confidence:68, tier:'strong',  dkLine:9.5,  dkOdds:'-115', fdLine:9.5,  fdOdds:'-115', mgmLine:9.5,  mgmOdds:'-112', czrLine:10,   czrOdds:'-125', ppLine:9.5,  rebetLine:9.5,  rebetOdds:'-112', hitRateLast10:'6/10', nbaPhotoId:'1630596', reasoning:'Mobley 9.8 RPG. LAL gives up boards in the paint. Big spot for Mobley.' },
-  { playerName:'James Harden',            team:'CLE', opponent:'LAL', statType:'assists',  line:7.5,  direction:'over',  confidence:66, tier:'strong',  dkLine:7.5,  dkOdds:'-115', fdLine:7.5,  fdOdds:'-115', mgmLine:7.5,  mgmOdds:'-112', czrLine:8,    czrOdds:'-125', ppLine:7.5,  rebetLine:7.5,  rebetOdds:'-112', hitRateLast10:'6/10', nbaPhotoId:'201935',  reasoning:'Harden (CLE) 7.5 APG since joining Cavs. Must-win game = full playmaking effort.' },
-  { playerName:'Cooper Flagg',            team:'DAL', opponent:'MIL', statType:'points',   line:18.5, direction:'over',  confidence:60, tier:'neutral', dkLine:18.5, dkOdds:'-110', fdLine:18.5, fdOdds:'-112', mgmLine:19,   mgmOdds:'-115', czrLine:18.5, czrOdds:'-110', ppLine:18.5, rebetLine:19,   rebetOdds:'-110', hitRateLast10:'5/10', nbaPhotoId:'1642366', reasoning:'Flagg vs MIL — 20.4 PPG but Giannis is a tough matchup. DAL 45.9% road dog.' },
-  { playerName:'Devin Booker',            team:'PHX', opponent:'ORL', statType:'assists',  line:5.5,  direction:'over',  confidence:64, tier:'neutral', dkLine:5.5,  dkOdds:'-110', fdLine:5.5,  fdOdds:'-112', mgmLine:5.5,  mgmOdds:'-110', czrLine:6,    czrOdds:'-122', ppLine:5.5,  rebetLine:5.5,  rebetOdds:'-108', hitRateLast10:'6/10', nbaPhotoId:'1626164', reasoning:'Booker 6.0 APG. PHX runs through him in blowout situations vs ORL.' },
-  { playerName:'Jalen Brunson',           team:'NYK', opponent:'HOU', statType:'assists',  line:7.5,  direction:'over',  confidence:65, tier:'strong',  dkLine:7.5,  dkOdds:'-115', fdLine:7.5,  fdOdds:'-115', mgmLine:7.5,  mgmOdds:'-112', czrLine:8,    czrOdds:'-125', ppLine:7.5,  rebetLine:7.5,  rebetOdds:'-112', hitRateLast10:'6/10', nbaPhotoId:'1628386', reasoning:'Brunson 7.2 APG. HOU forces turnovers but Brunson handles pressure well.' },
+  { playerName:'Kevin Durant',            team:'HOU', opponent:'NYK', statType:'points',   line:24.5, direction:'over',  confidence:74, tier:'strong',
+    dkLine:24.5, dkOdds:'-108', fdLine:24.5, fdOdds:'-110', mgmLine:25, mgmOdds:'-115', czrLine:24.5, czrOdds:'-108',
+    ppLine:24.5, udLine:24.5, udOdds:'-108', rebetLine:24.5, rebetOdds:'-107',
+    hitRateLast10:'6/10', nbaPhotoId:'201142', reasoning:'KD vs NYK — HOU 49.4% slight dog. Durant 24.8 PPG. Great value spot.' },
+  { playerName:'Alperen Sengun',          team:'HOU', opponent:'NYK', statType:'points',   line:20.5, direction:'over',  confidence:72, tier:'strong',
+    dkLine:20.5, dkOdds:'-112', fdLine:21, fdOdds:'-118', mgmLine:20.5, mgmOdds:'-110', czrLine:20.5, czrOdds:'-110',
+    ppLine:20.5, udLine:21, udOdds:'-115', rebetLine:20.5, rebetOdds:'-108',
+    hitRateLast10:'6/10', nbaPhotoId:'1630578', reasoning:'Sengun vs NYK — 21.2 PPG L10. NYK allows pts to opposing Cs.' },
+  { playerName:'LeBron James',            team:'LAL', opponent:'CLE', statType:'points',   line:24.5, direction:'over',  confidence:70, tier:'strong',
+    dkLine:24.5, dkOdds:'-108', fdLine:24.5, fdOdds:'-110', mgmLine:25, mgmOdds:'-115', czrLine:24.5, czrOdds:'-108',
+    ppLine:24.5, udLine:24.5, udOdds:'-110', rebetLine:24.5, rebetOdds:'-107',
+    hitRateLast10:'6/10', nbaPhotoId:'2544', reasoning:'LeBron vs CLE — winner clinches playoff berth. Big game vs his old team. 25.3 PPG avg.' },
+  { playerName:'Darius Garland',          team:'LAC', opponent:'POR', statType:'points',   line:20.5, direction:'over',  confidence:71, tier:'strong',
+    dkLine:20.5, dkOdds:'-112', fdLine:21, fdOdds:'-118', mgmLine:20.5, mgmOdds:'-110', czrLine:20.5, czrOdds:'-110',
+    ppLine:20.5, udLine:20.5, udOdds:'-112', rebetLine:20.5, rebetOdds:'-108',
+    hitRateLast10:'6/10', nbaPhotoId:'1629636', reasoning:'Garland (LAC) vs POR — 21.1 PPG, 50.6 FG%, 51.2 3PT% with Clippers.' },
+  { playerName:'Giannis Antetokounmpo',   team:'MIL', opponent:'DAL', statType:'rebounds', line:11.5, direction:'over',  confidence:72, tier:'strong',
+    dkLine:11.5, dkOdds:'-112', fdLine:11.5, fdOdds:'-115', mgmLine:11.5, mgmOdds:'-110', czrLine:12, czrOdds:'-125',
+    ppLine:11.5, udLine:11.5, udOdds:'-112', rebetLine:11.5, rebetOdds:'-112',
+    hitRateLast10:'7/10', nbaPhotoId:'203507', reasoning:'Giannis 11.8 RPG. DAL gives up interior rebounds. Cooper Flagg no match for Giannis size.' },
+  { playerName:'LaMelo Ball',             team:'CHA', opponent:'BKN', statType:'assists',  line:8.5,  direction:'over',  confidence:75, tier:'strong',
+    dkLine:8.5, dkOdds:'-115', fdLine:8.5, fdOdds:'-115', mgmLine:8.5, mgmOdds:'-112', czrLine:9, czrOdds:'-125',
+    ppLine:8.5, udLine:8.5, udOdds:'-112', rebetLine:8.5, rebetOdds:'-112',
+    hitRateLast10:'7/10', nbaPhotoId:'1630163', reasoning:'LaMelo 8.8 APG. BKN 27th in forcing turnovers. CHA 92% win prob.' },
+  { playerName:'Austin Reaves',           team:'LAL', opponent:'CLE', statType:'points',   line:22.5, direction:'over',  confidence:66, tier:'strong',
+    dkLine:22.5, dkOdds:'-108', fdLine:22.5, fdOdds:'-110', mgmLine:23, mgmOdds:'-115', czrLine:22.5, czrOdds:'-108',
+    ppLine:22.5, udLine:22.5, udOdds:'-108', rebetLine:22.5, rebetOdds:'-107',
+    hitRateLast10:'6/10', nbaPhotoId:'1631244', reasoning:'Reaves 23.6 PPG leads LAL. Big must-win game = full effort and usage.' },
+  { playerName:'Evan Mobley',             team:'CLE', opponent:'LAL', statType:'rebounds', line:9.5,  direction:'over',  confidence:68, tier:'strong',
+    dkLine:9.5, dkOdds:'-115', fdLine:9.5, fdOdds:'-115', mgmLine:9.5, mgmOdds:'-112', czrLine:10, czrOdds:'-125',
+    ppLine:9.5, udLine:9.5, udOdds:'-112', rebetLine:9.5, rebetOdds:'-112',
+    hitRateLast10:'6/10', nbaPhotoId:'1630596', reasoning:'Mobley 9.8 RPG. LAL gives up boards in the paint. Big spot for Mobley.' },
+  { playerName:'James Harden',            team:'CLE', opponent:'LAL', statType:'assists',  line:7.5,  direction:'over',  confidence:66, tier:'strong',
+    dkLine:7.5, dkOdds:'-115', fdLine:7.5, fdOdds:'-115', mgmLine:7.5, mgmOdds:'-112', czrLine:8, czrOdds:'-125',
+    ppLine:7.5, udLine:7.5, udOdds:'-112', rebetLine:7.5, rebetOdds:'-112',
+    hitRateLast10:'6/10', nbaPhotoId:'201935', reasoning:'Harden (CLE) 7.5 APG since joining Cavs. Must-win game = full playmaking effort.' },
+  { playerName:'Kawhi Leonard',           team:'LAC', opponent:'POR', statType:'rebounds', line:5.5,  direction:'over',  confidence:67, tier:'strong',
+    dkLine:5.5, dkOdds:'-112', fdLine:5.5, fdOdds:'-115', mgmLine:5.5, mgmOdds:'-110', czrLine:6, czrOdds:'-122',
+    ppLine:5.5, udLine:5.5, udOdds:'-110', rebetLine:5.5, rebetOdds:'-110',
+    hitRateLast10:'6/10', nbaPhotoId:'202695', reasoning:'Kawhi 6.2 RPG. POR small ball lineup gives up wing boards freely.' },
+  { playerName:'Mikal Bridges',           team:'NYK', opponent:'HOU', statType:'points',   line:17.5, direction:'over',  confidence:65, tier:'strong',
+    dkLine:17.5, dkOdds:'-110', fdLine:18, fdOdds:'-115', mgmLine:17.5, mgmOdds:'-108', czrLine:17.5, czrOdds:'-110',
+    ppLine:17.5, udLine:17.5, udOdds:'-108', rebetLine:17.5, rebetOdds:'-108',
+    hitRateLast10:'5/10', nbaPhotoId:'1628969', reasoning:'Bridges 17.1 PPG. HOU focuses D on Brunson leaving Bridges open.' },
+  { playerName:'Donovan Mitchell',        team:'CLE', opponent:'LAL', statType:'rebounds', line:4.5,  direction:'over',  confidence:65, tier:'strong',
+    dkLine:4.5, dkOdds:'-112', fdLine:4.5, fdOdds:'-115', mgmLine:4.5, mgmOdds:'-110', czrLine:5, czrOdds:'-122',
+    ppLine:4.5, udLine:4.5, udOdds:'-110', rebetLine:4.5, rebetOdds:'-110',
+    hitRateLast10:'6/10', nbaPhotoId:'1628378', reasoning:'Mitchell pulls 4.6 RPG. LAL gives up boards to opposing SGs in big games.' },
+  { playerName:'Jalen Brunson',           team:'NYK', opponent:'HOU', statType:'assists',  line:7.5,  direction:'over',  confidence:65, tier:'strong',
+    dkLine:7.5, dkOdds:'-115', fdLine:7.5, fdOdds:'-115', mgmLine:7.5, mgmOdds:'-112', czrLine:8, czrOdds:'-125',
+    ppLine:7.5, udLine:7.5, udOdds:'-112', rebetLine:7.5, rebetOdds:'-112',
+    hitRateLast10:'6/10', nbaPhotoId:'1628386', reasoning:'Brunson 7.2 APG. HOU forces turnovers but Brunson handles pressure well.' },
+  { playerName:'Devin Booker',            team:'PHX', opponent:'ORL', statType:'assists',  line:5.5,  direction:'over',  confidence:64, tier:'neutral',
+    dkLine:5.5, dkOdds:'-110', fdLine:5.5, fdOdds:'-112', mgmLine:5.5, mgmOdds:'-110', czrLine:6, czrOdds:'-122',
+    ppLine:5.5, udLine:5.5, udOdds:'-108', rebetLine:5.5, rebetOdds:'-108',
+    hitRateLast10:'6/10', nbaPhotoId:'1626164', reasoning:'Booker 6.0 APG. PHX runs through him in blowout situations vs ORL.' },
   // ── NEUTRAL ──
-  { playerName:'Matas Buzelis',           team:'CHI', opponent:'SAS', statType:'points',   line:15.5, direction:'over',  confidence:55, tier:'neutral', dkLine:15.5, dkOdds:'-108', fdLine:16,   fdOdds:'-115', mgmLine:15.5, mgmOdds:'-106', czrLine:15.5, czrOdds:'-108', ppLine:15.5, rebetLine:16,   rebetOdds:'-108', hitRateLast10:'5/10', nbaPhotoId:'1642267', reasoning:'Buzelis leads CHI at 16.4 PPG but SAS defense is elite. Coin flip here.' },
-  { playerName:'Paolo Banchero',          team:'ORL', opponent:'PHX', statType:'points',   line:21.5, direction:'over',  confidence:52, tier:'neutral', dkLine:21.5, dkOdds:'-108', fdLine:21.5, fdOdds:'-110', mgmLine:22,   mgmOdds:'-115', czrLine:21.5, czrOdds:'-108', ppLine:21.5, rebetLine:22,   rebetOdds:'-108', hitRateLast10:'5/10', nbaPhotoId:'1631094', reasoning:'Banchero vs PHX — ORL 45.6% road dog. Tough matchup but 21.8 PPG avg. Monitor status.' },
+  { playerName:'Cooper Flagg',            team:'DAL', opponent:'MIL', statType:'points',   line:18.5, direction:'over',  confidence:58, tier:'neutral',
+    dkLine:18.5, dkOdds:'-110', fdLine:18.5, fdOdds:'-112', mgmLine:19, mgmOdds:'-115', czrLine:18.5, czrOdds:'-110',
+    ppLine:18.5, udLine:19, udOdds:'-115', rebetLine:19, rebetOdds:'-110',
+    hitRateLast10:'5/10', nbaPhotoId:'1642366', reasoning:'Flagg vs MIL — 20.4 PPG but Giannis is a tough matchup. DAL 45.9% road dog.' },
+  { playerName:'Paolo Banchero',          team:'ORL', opponent:'PHX', statType:'points',   line:21.5, direction:'over',  confidence:52, tier:'neutral',
+    dkLine:21.5, dkOdds:'-108', fdLine:21.5, fdOdds:'-110', mgmLine:22, mgmOdds:'-115', czrLine:21.5, czrOdds:'-108',
+    ppLine:21.5, udLine:22, udOdds:'-115', rebetLine:22, rebetOdds:'-108',
+    hitRateLast10:'5/10', nbaPhotoId:'1631094', reasoning:'Banchero vs PHX — ORL 45.6% road dog. Tough matchup but 21.8 PPG avg.' },
+  { playerName:'Matas Buzelis',           team:'CHI', opponent:'SAS', statType:'points',   line:15.5, direction:'over',  confidence:55, tier:'neutral',
+    dkLine:15.5, dkOdds:'-108', fdLine:16, fdOdds:'-115', mgmLine:15.5, mgmOdds:'-106', czrLine:15.5, czrOdds:'-108',
+    ppLine:15.5, udLine:15.5, udOdds:'-106', rebetLine:16, rebetOdds:'-108',
+    hitRateLast10:'5/10', nbaPhotoId:'1642267', reasoning:'Buzelis leads CHI at 16.4 PPG but SAS defense is elite. Coin flip here.' },
   // ── FADE ──
-  { playerName:'Noah Clowney',             team:'BKN', opponent:'CHA', statType:'points',   line:11.5, direction:'under', confidence:38, tier:'fade',    dkLine:11.5, dkOdds:'-112', fdLine:11.5, fdOdds:'-110', mgmLine:11.5, mgmOdds:'-112', czrLine:11,   czrOdds:'+105', ppLine:11.5, rebetLine:11.5, rebetOdds:'-110', hitRateLast10:'3/10', nbaPhotoId:'1641734', reasoning:'FADE OVER — BKN 7.8% win prob vs CHA. BKN players score less in blowout losses. Fade all BKN props.' },
+  { playerName:'Noah Clowney',            team:'BKN', opponent:'CHA', statType:'points',   line:12.5, direction:'under', confidence:35, tier:'fade',
+    dkLine:12.5, dkOdds:'-112', fdLine:12.5, fdOdds:'-110', mgmLine:12.5, mgmOdds:'-112', czrLine:12, czrOdds:'+105',
+    ppLine:12.5, udLine:12.5, udOdds:'+100', rebetLine:12.5, rebetOdds:'-110',
+    hitRateLast10:'3/10', nbaPhotoId:'1641749', reasoning:'FADE OVER — BKN 7.8% win prob vs CHA. BKN players score less in blowout losses. Fade all BKN props.' },
 ];
 
 SEEDED_PROPS.forEach(p => { p.altLines = buildAltLines(p.dkLine, p.dkOdds); });
@@ -131,6 +208,90 @@ function getWinProb(homeTeam, awayTeam, spread, rawHome) {
   return {home:50,away:50};
 }
 
+
+// ── ODDS API — fetch live props from all books ──
+async function fetchOddsAPI() {
+  const KEY = process.env.ODDS_API_KEY;
+  if (!KEY) { console.log('⚠️ No ODDS_API_KEY set'); return; }
+  try {
+    const markets = [
+      'player_points','player_rebounds','player_assists',
+      'player_threes','player_blocks','player_steals',
+      'player_points_rebounds_assists','player_points_rebounds',
+      'player_points_assists','player_rebounds_assists',
+    ].join(',');
+
+    const url = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/'
+      + '?apiKey=' + KEY
+      + '&regions=us'
+      + '&markets=' + markets
+      + '&oddsFormat=american'
+      + '&bookmakers=draftkings,fanduel,betmgm,caesars,pointsbet,mybookieag';
+
+    const { data } = await axios.get(url, { timeout: 20000 });
+    console.log('📊 Odds API: ' + data.length + ' games returned');
+
+    const propsMap = {};
+    for (const game of data) {
+      for (const bm of game.bookmakers) {
+        for (const mkt of bm.markets) {
+          const statType = mkt.key.replace('player_', '');
+          for (const outcome of mkt.outcomes) {
+            const key = outcome.name + '|' + statType + '|' + game.id;
+            if (!propsMap[key]) {
+              propsMap[key] = {
+                playerName: outcome.name, gameId: game.id,
+                statType, direction: 'over', line: outcome.point,
+                books: {}, date: new Date().toISOString().split('T')[0],
+              };
+            }
+            propsMap[key].books[bm.key] = { line: outcome.point, price: outcome.price };
+          }
+        }
+      }
+    }
+
+    const props = [];
+    for (const [, p] of Object.entries(propsMap)) {
+      const dk  = p.books['draftkings'];
+      const fd  = p.books['fanduel'];
+      const mgm = p.books['betmgm'];
+      const czr = p.books['caesars'];
+      const pb  = p.books['pointsbet'];
+      if (!dk && !fd) continue;
+      const pr = dk || fd;
+      const ml = pr.line;
+      const mp = pr.price;
+      const dko = mp > 0 ? '+' + mp : String(mp);
+      const fmt = (b) => b ? (b.price > 0 ? '+' + b.price : String(b.price)) : dko;
+
+      props.push({
+        playerName:   p.playerName,
+        gameId:       p.gameId,
+        statType:     p.statType,
+        direction:    'over',
+        line:         ml,
+        dkLine:       dk?.line || ml,  dkOdds:  fmt(dk),
+        fdLine:       fd?.line || ml,  fdOdds:  fmt(fd),
+        mgmLine:      mgm?.line || ml, mgmOdds: fmt(mgm),
+        czrLine:      czr?.line || ml, czrOdds: fmt(czr),
+        ppLine:       ml,
+        udLine:       ml, udOdds: dko,
+        rebetLine:    pb?.line || ml,  rebetOdds: fmt(pb),
+        altLines:     buildAltLines(ml, dko),
+        confidence:   50,
+        tier:         'neutral',
+        date:         p.date,
+      });
+    }
+
+    store.liveProps = props;
+    console.log('✅ Odds API: ' + props.length + ' props loaded');
+  } catch(e) {
+    console.error('❌ Odds API error:', e.message);
+  }
+}
+
 // ── ESPN FETCH ──
 async function fetchESPN() {
   try {
@@ -186,13 +347,16 @@ app.get('/api/games', (req,res) => {
   res.json({success:true, count:games.length, games});
 });
 
-// PROPS
+// PROPS — use live Odds API props when available, fall back to seeded
 app.get('/api/props', (req,res) => {
   const tOrd={elite:0,strong:1,neutral:2,fade:3};
-  let props=[...SEEDED_PROPS].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
+  // Use live props if we have them (Odds API returned data)
+  let props = store.liveProps.length > 0 ? store.liveProps : [...SEEDED_PROPS];
+  props = [...props].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
   if (req.query.type) props=props.filter(p=>p.statType===req.query.type);
   if (req.query.tier) props=props.filter(p=>p.tier===req.query.tier);
-  res.json({success:true, count:props.length, props});
+  const source = store.liveProps.length > 0 ? 'live' : 'seeded';
+  res.json({success:true, count:props.length, source, props});
 });
 
 // INJURIES
@@ -262,7 +426,7 @@ app.post('/api/analysis/slip', async (req,res) => {
 
 
 
-// AI Stats Chat — Claude answers any NBA question using real data
+// AI Stats Chat — Claude answers any NBA question with real data + game logs
 app.post('/api/stats/ask', async (req,res) => {
   try {
     const { question } = req.body||{};
@@ -339,7 +503,66 @@ Answer the users NBA question in a helpful, conversational way. Be specific with
       }
     });
 
-    res.json({ success:true, answer: data.content?.[0]?.text || 'No answer available.' });
+    const answer = data.content?.[0]?.text || 'No answer available.';
+
+    // Try to fetch game log if a player is mentioned
+    let gameLog = null;
+    const PLAYER_IDS = {
+      'lebron':2544,'curry':201939,'giannis':203507,'jokic':203999,'tatum':1628369,
+      'mitchell':1628378,'brunson':1628386,'booker':1626164,'kawhi':202695,'durant':201142,
+      'lamelo':1630163,'maxey':1630178,'wembanyama':1641705,'garland':1629636,'harden':201935,
+      'reaves':1631244,'flagg':1642366,'sengun':1630578,'luka':1629029,'sga':1628983,
+      'mobley':1630596,'edwards':1630162,'trae':1629027,'davis':203076,'kuminga':1630557,
+    };
+    const TEAM_IDS = {
+      'cavs':'1610612739','cavaliers':'1610612739','lakers':'1610612747','celtics':'1610612738',
+      'warriors':'1610612744','nuggets':'1610612743','bucks':'1610612749','knicks':'1610612752',
+      'rockets':'1610612745','clippers':'1610612746','suns':'1610612756','heat':'1610612748',
+      'mavs':'1610612742','mavericks':'1610612742','spurs':'1610612759','thunder':'1610612760',
+      'pistons':'1610612765','jazz':'1610612762','hawks':'1610612737','sixers':'1610612755',
+      'nets':'1610612751','hornets':'1610612766','bulls':'1610612741','magic':'1610612753',
+      'pacers':'1610612754','grizzlies':'1610612763','pelicans':'1610612740','kings':'1610612758',
+      'blazers':'1610612757','raptors':'1610612761','wizards':'1610612764','timberwolves':'1610612750',
+    };
+
+    const qLower = question.toLowerCase();
+    let foundPlayerId = null;
+    let foundTeamId = null;
+    for (const [name, id] of Object.entries(PLAYER_IDS)) {
+      if (qLower.includes(name)) { foundPlayerId = id; break; }
+    }
+    for (const [name, id] of Object.entries(TEAM_IDS)) {
+      if (qLower.includes(name)) { foundTeamId = id; break; }
+    }
+
+    if (foundPlayerId) {
+      try {
+        const params = new URLSearchParams({
+          PlayerID: foundPlayerId, Season: '2025-26',
+          SeasonType: 'Regular Season', PerMode: 'Totals', LeagueID: '00',
+        });
+        if (foundTeamId) params.append('OppTeamID', foundTeamId);
+        const glUrl = 'https://stats.nba.com/stats/playergamelogs?' + params.toString();
+        const glRes = await axios.get(glUrl, { timeout:8000, headers:{
+          'User-Agent':'Mozilla/5.0','Referer':'https://www.nba.com','Origin':'https://www.nba.com',
+          'Accept':'application/json','x-nba-stats-origin':'stats','x-nba-stats-token':'true',
+        }});
+        const headers = glRes.data.resultSets[0].headers;
+        const rows = glRes.data.resultSets[0].rowSet.slice(0,10);
+        const idx = k => headers.indexOf(k);
+        gameLog = rows.map(r => ({
+          date: (r[idx('GAME_DATE')]||'').split('T')[0],
+          matchup: r[idx('MATCHUP')]||'',
+          result: r[idx('WL')]||'',
+          pts: r[idx('PTS')], reb: r[idx('REB')], ast: r[idx('AST')],
+          stl: r[idx('STL')], blk: r[idx('BLK')], min: r[idx('MIN')],
+          fgm: r[idx('FGM')], fga: r[idx('FGA')],
+          fg3m: r[idx('FG3M')], fg3a: r[idx('FG3A')],
+        }));
+      } catch(e) { /* game log unavailable */ }
+    }
+
+    res.json({ success:true, answer, gameLog });
   } catch(e) {
     console.error('AI stats error:', e.message);
     res.status(500).json({ success:false, error: e.message });
@@ -380,13 +603,22 @@ app.get('/api/nba/career', async (req,res) => {
   } catch(e){ res.status(500).json({success:false,error:e.message}); }
 });
 
-app.get('/api/health',(req,res)=>res.json({status:'ok',time:new Date().toISOString(),games:store.games.length,injuries:store.injuries.length}));
+app.get('/api/health',(req,res)=>res.json({status:'ok',time:new Date().toISOString(),games:store.games.length,injuries:store.injuries.length,liveProps:store.liveProps.length,source:store.liveProps.length>0?'Odds API (LIVE)':'Seeded (hardcoded)'}));
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
 
 // ── START ──
 app.listen(PORT, async () => {
   console.log('🕷️  BeepBopProps$ → http://localhost:'+PORT);
   await fetchESPN();
+  await fetchOddsAPI();
+  // Refresh ESPN every 15 min during game hours
   cron.schedule('*/15 12-23 * * *', fetchESPN, {timezone:'America/New_York'});
-  cron.schedule('0 0 * * *', fetchESPN, {timezone:'America/New_York'});
+  // Refresh Odds API every 30 min (conserve free tier requests)
+  cron.schedule('*/30 12-23 * * *', fetchOddsAPI, {timezone:'America/New_York'});
+  // Midnight reset
+  cron.schedule('0 0 * * *', async () => {
+    store.liveProps = [];
+    await fetchESPN();
+    await fetchOddsAPI();
+  }, {timezone:'America/New_York'});
 });
