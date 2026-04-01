@@ -209,57 +209,51 @@ function getWinProb(homeTeam, awayTeam, spread, rawHome) {
 }
 
 
-// ── ODDS API — fetch live props (works on free tier) ──
+// ── ODDS API — paid tier, all games + all books in one call ──
 async function fetchOddsAPI() {
   const KEY = process.env.ODDS_API_KEY;
   if (!KEY) { console.log('⚠️ No ODDS_API_KEY set'); return; }
   try {
+    // 7 markets × 1 region = 7 credits per call
+    // 4 calls/hr × 12hr × 30days × 7 = ~10,080 credits/month (well under 20k limit)
     const MARKETS = [
       'player_points','player_rebounds','player_assists',
       'player_threes','player_blocks','player_steals',
       'player_points_rebounds_assists',
     ].join(',');
 
-    // Step 1: Get today's NBA event IDs
-    const eventsUrl = 'https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey=' + KEY;
-    const eventsRes = await axios.get(eventsUrl, { timeout: 10000 });
-    const events = eventsRes.data || [];
-    console.log('📊 Odds API: ' + events.length + ' NBA events found');
+    const BOOKS = 'draftkings,fanduel,betmgm,caesars,pointsbet,mybookieag,betonlineag';
 
-    if (!events.length) {
-      // Fallback: try the main odds endpoint  
-      const fallbackUrl = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=' + KEY
-        + '&regions=us&markets=player_points,player_rebounds,player_assists,player_threes'
-        + '&oddsFormat=american&bookmakers=draftkings,fanduel,betmgm,caesars';
-      const { data } = await axios.get(fallbackUrl, { timeout: 15000 });
-      console.log('📊 Odds API fallback: ' + data.length + ' games');
-      processOddsData(data);
+    // Paid plan: single call returns ALL games + ALL player prop markets at once
+    const url = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/'
+      + '?apiKey=' + KEY
+      + '&regions=us'
+      + '&markets=' + MARKETS
+      + '&oddsFormat=american'
+      + '&bookmakers=' + BOOKS;
+
+    const { data, headers } = await axios.get(url, { timeout: 20000 });
+
+    // Log remaining quota
+    const remaining = headers['x-requests-remaining'] || '?';
+    const used      = headers['x-requests-used'] || '?';
+    console.log('📊 Odds API: ' + data.length + ' games | ' + remaining + ' requests remaining this month (used: ' + used + ')');
+
+    if (!data.length) {
+      console.log('⚠️ Odds API: no games returned — lines not posted yet');
       return;
     }
 
-    // Step 2: Fetch props for each event (free tier supports this)
-    const allProps = [];
-    for (const event of events.slice(0, 10)) { // max 10 games
-      try {
-        const propUrl = 'https://api.the-odds-api.com/v4/sports/basketball_nba/events/'
-          + event.id + '/odds?apiKey=' + KEY
-          + '&regions=us&markets=' + MARKETS
-          + '&oddsFormat=american&bookmakers=draftkings,fanduel,betmgm,caesars';
-        const propRes = await axios.get(propUrl, { timeout: 10000 });
-        if (propRes.data && propRes.data.bookmakers) {
-          allProps.push(propRes.data);
-        }
-        // Small delay to avoid rate limiting
-        await new Promise(r => setTimeout(r, 200));
-      } catch(e) {
-        console.log('⚠️ Event ' + event.id + ' props error: ' + e.message);
-      }
-    }
-    console.log('📊 Odds API: fetched props for ' + allProps.length + ' games');
-    processOddsData(allProps);
+    processOddsData(data);
 
   } catch(e) {
     console.error('❌ Odds API error:', e.message);
+    if (e.response && e.response.status === 401) {
+      console.error('❌ Invalid API key — check ODDS_API_KEY in Railway');
+    }
+    if (e.response && e.response.status === 429) {
+      console.error('❌ Rate limited — too many requests');
+    }
   }
 }
 
@@ -473,7 +467,7 @@ app.post('/api/analysis/slip', async (req,res) => {
 // AI Stats Chat — Claude answers any NBA question with real data + game logs
 app.post('/api/stats/ask', async (req,res) => {
   try {
-    const { question } = req.body||{};
+    const { question, slipContext, gameLogContext } = req.body||{};
     if (!question) return res.status(400).json({success:false,error:'No question'});
 
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -485,7 +479,7 @@ app.post('/api/stats/ask', async (req,res) => {
     const injCtx = store.injuries.slice(0,15).map(i=>i.playerName+' ('+i.team+') - '+i.status).join(', ');
 
     // Build system prompt with full NBA context
-    const systemPrompt = `You are BeepBopStats, an expert NBA stats analyst for BeepBopProps$. You have deep knowledge of the 2025-26 NBA season.
+    const systemPrompt = `You are BeepBopStats — a StatMuse-style NBA analyst AND parlay advisor for BeepBopProps$. You have two modes: (1) Answer factual NBA stats questions with real numbers, and (2) Analyze the user's current pick slip and give betting advice. Be direct, specific, and use real stats. Never say 'I don't have access to' — if you don't know exact numbers give your best estimate based on the season context below. Keep answers under 150 words unless analyzing a parlay.
 
 CONFIRMED CURRENT ROSTERS (post Feb 5 2026 trade deadline):
 - Trae Young → Washington Wizards (from ATL, January 2026)
@@ -538,7 +532,10 @@ Answer the users NBA question in a helpful, conversational way. Be specific with
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 400,
       system: systemPrompt,
-      messages: [{ role: 'user', content: question }]
+      messages: [{ role: 'user', content: question
+        + (slipContext ? '\n\n[CURRENT PICK SLIP]: ' + slipContext : '')
+        + (gameLogContext ? '\n\n[REAL GAME LOG DATA]: ' + gameLogContext : '')
+      }]
     }, {
       headers: {
         'x-api-key': process.env.ANTHROPIC_API_KEY,
@@ -727,7 +724,7 @@ app.listen(PORT, async () => {
   // Refresh ESPN every 15 min during game hours
   cron.schedule('*/15 12-23 * * *', fetchESPN, {timezone:'America/New_York'});
   // Refresh Odds API every 30 min (conserve free tier requests)
-  cron.schedule('*/30 12-23 * * *', fetchOddsAPI, {timezone:'America/New_York'});
+  cron.schedule('*/15 11-23 * * *', fetchOddsAPI, {timezone:'America/New_York'}); // 15min = ~14,400 credits/month (safe under 20k)
   // Midnight reset
   cron.schedule('0 0 * * *', async () => {
     store.liveProps = [];
