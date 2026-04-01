@@ -59,6 +59,8 @@ async function loadGames() {
 }
 
 function renderGames(games) {
+  // Store live/started games globally for props section
+  window._liveGames = games;
   var html = '<div class="games-grid">';
   games.forEach(function(g) {
     var hp = Math.round(g.homeWinProb || 50);
@@ -98,9 +100,45 @@ function renderProps(props) {
     document.getElementById('props-content').innerHTML = '<div class="err-box"><h3>No Props</h3><p>Props appear when lines are posted. Try refreshing.</p></div>';
     return;
   }
-  var html = '<div class="props-grid">';
-  props.forEach(function(p) { html += buildPropCard(p); });
-  document.getElementById('props-content').innerHTML = html + '</div>';
+
+  // Split props into live/started games vs upcoming
+  var liveTeams = [];
+  if (window._liveGames) {
+    window._liveGames.forEach(function(g) {
+      if (g.status === 'live' || g.status === 'final') {
+        liveTeams.push(g.homeTeam);
+        liveTeams.push(g.awayTeam);
+      }
+    });
+  }
+
+  var startedProps = liveTeams.length > 0
+    ? props.filter(function(p){ return liveTeams.includes(p.team) || liveTeams.includes(p.opponent); })
+    : [];
+  var upcomingProps = startedProps.length > 0
+    ? props.filter(function(p){ return !liveTeams.includes(p.team) && !liveTeams.includes(p.opponent); })
+    : props;
+
+  var html = '';
+
+  // Upcoming props section
+  if (upcomingProps.length) {
+    html += '<div class="props-section-title">🎯 Upcoming Props</div>';
+    html += '<div class="props-grid">';
+    upcomingProps.forEach(function(p) { html += buildPropCard(p); });
+    html += '</div>';
+  }
+
+  // Started/live props section
+  if (startedProps.length) {
+    html += '<div class="props-section-title started-title">⚡ Game Started — Lines May Have Moved</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:6px 10px;background:rgba(229,34,34,.05);border-radius:6px;border:1px solid var(--bord)">These games have already tipped off. Verify lines on DraftKings or PrizePicks before placing bets.</div>';
+    html += '<div class="props-grid">';
+    startedProps.forEach(function(p) { html += buildPropCard(p); });
+    html += '</div>';
+  }
+
+  document.getElementById('props-content').innerHTML = html;
 }
 
 function buildPropCard(p) {

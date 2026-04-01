@@ -209,87 +209,131 @@ function getWinProb(homeTeam, awayTeam, spread, rawHome) {
 }
 
 
-// ── ODDS API — fetch live props from all books ──
+// ── ODDS API — fetch live props (works on free tier) ──
 async function fetchOddsAPI() {
   const KEY = process.env.ODDS_API_KEY;
   if (!KEY) { console.log('⚠️ No ODDS_API_KEY set'); return; }
   try {
-    const markets = [
+    const MARKETS = [
       'player_points','player_rebounds','player_assists',
       'player_threes','player_blocks','player_steals',
-      'player_points_rebounds_assists','player_points_rebounds',
-      'player_points_assists','player_rebounds_assists',
+      'player_points_rebounds_assists',
     ].join(',');
 
-    const url = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/'
-      + '?apiKey=' + KEY
-      + '&regions=us'
-      + '&markets=' + markets
-      + '&oddsFormat=american'
-      + '&bookmakers=draftkings,fanduel,betmgm,caesars,pointsbet,mybookieag';
+    // Step 1: Get today's NBA event IDs
+    const eventsUrl = 'https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey=' + KEY;
+    const eventsRes = await axios.get(eventsUrl, { timeout: 10000 });
+    const events = eventsRes.data || [];
+    console.log('📊 Odds API: ' + events.length + ' NBA events found');
 
-    const { data } = await axios.get(url, { timeout: 20000 });
-    console.log('📊 Odds API: ' + data.length + ' games returned');
+    if (!events.length) {
+      // Fallback: try the main odds endpoint  
+      const fallbackUrl = 'https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=' + KEY
+        + '&regions=us&markets=player_points,player_rebounds,player_assists,player_threes'
+        + '&oddsFormat=american&bookmakers=draftkings,fanduel,betmgm,caesars';
+      const { data } = await axios.get(fallbackUrl, { timeout: 15000 });
+      console.log('📊 Odds API fallback: ' + data.length + ' games');
+      processOddsData(data);
+      return;
+    }
 
-    const propsMap = {};
-    for (const game of data) {
-      for (const bm of game.bookmakers) {
-        for (const mkt of bm.markets) {
-          const statType = mkt.key.replace('player_', '');
-          for (const outcome of mkt.outcomes) {
-            const key = outcome.name + '|' + statType + '|' + game.id;
-            if (!propsMap[key]) {
-              propsMap[key] = {
-                playerName: outcome.name, gameId: game.id,
-                statType, direction: 'over', line: outcome.point,
-                books: {}, date: new Date().toISOString().split('T')[0],
-              };
-            }
+    // Step 2: Fetch props for each event (free tier supports this)
+    const allProps = [];
+    for (const event of events.slice(0, 10)) { // max 10 games
+      try {
+        const propUrl = 'https://api.the-odds-api.com/v4/sports/basketball_nba/events/'
+          + event.id + '/odds?apiKey=' + KEY
+          + '&regions=us&markets=' + MARKETS
+          + '&oddsFormat=american&bookmakers=draftkings,fanduel,betmgm,caesars';
+        const propRes = await axios.get(propUrl, { timeout: 10000 });
+        if (propRes.data && propRes.data.bookmakers) {
+          allProps.push(propRes.data);
+        }
+        // Small delay to avoid rate limiting
+        await new Promise(r => setTimeout(r, 200));
+      } catch(e) {
+        console.log('⚠️ Event ' + event.id + ' props error: ' + e.message);
+      }
+    }
+    console.log('📊 Odds API: fetched props for ' + allProps.length + ' games');
+    processOddsData(allProps);
+
+  } catch(e) {
+    console.error('❌ Odds API error:', e.message);
+  }
+}
+
+function processOddsData(games) {
+  const propsMap = {};
+  for (const game of games) {
+    for (const bm of (game.bookmakers || [])) {
+      for (const mkt of (bm.markets || [])) {
+        const statType = mkt.key.replace('player_', '');
+        for (const outcome of (mkt.outcomes || [])) {
+          const pName = outcome.description || outcome.name;
+          const key = pName + '|' + statType + '|' + game.id;
+          if (!propsMap[key]) {
+            propsMap[key] = {
+              playerName: pName, gameId: game.id,
+              statType, direction: outcome.name?.toLowerCase().includes('over') ? 'over' : 'under',
+              line: outcome.point,
+              books: {}, date: new Date().toISOString().split('T')[0],
+            };
+          }
+          if (outcome.name?.toLowerCase().includes('over')) {
             propsMap[key].books[bm.key] = { line: outcome.point, price: outcome.price };
           }
         }
       }
     }
-
-    const props = [];
-    for (const [, p] of Object.entries(propsMap)) {
-      const dk  = p.books['draftkings'];
-      const fd  = p.books['fanduel'];
-      const mgm = p.books['betmgm'];
-      const czr = p.books['caesars'];
-      const pb  = p.books['pointsbet'];
-      if (!dk && !fd) continue;
-      const pr = dk || fd;
-      const ml = pr.line;
-      const mp = pr.price;
-      const dko = mp > 0 ? '+' + mp : String(mp);
-      const fmt = (b) => b ? (b.price > 0 ? '+' + b.price : String(b.price)) : dko;
-
-      props.push({
-        playerName:   p.playerName,
-        gameId:       p.gameId,
-        statType:     p.statType,
-        direction:    'over',
-        line:         ml,
-        dkLine:       dk?.line || ml,  dkOdds:  fmt(dk),
-        fdLine:       fd?.line || ml,  fdOdds:  fmt(fd),
-        mgmLine:      mgm?.line || ml, mgmOdds: fmt(mgm),
-        czrLine:      czr?.line || ml, czrOdds: fmt(czr),
-        ppLine:       ml,
-        udLine:       ml, udOdds: dko,
-        rebetLine:    pb?.line || ml,  rebetOdds: fmt(pb),
-        altLines:     buildAltLines(ml, dko),
-        confidence:   50,
-        tier:         'neutral',
-        date:         p.date,
-      });
-    }
-
-    store.liveProps = props;
-    console.log('✅ Odds API: ' + props.length + ' props loaded');
-  } catch(e) {
-    console.error('❌ Odds API error:', e.message);
   }
+
+  const props = [];
+  for (const [, p] of Object.entries(propsMap)) {
+    if (p.direction !== 'over') continue;
+    const dk  = p.books['draftkings'];
+    const fd  = p.books['fanduel'];
+    const mgm = p.books['betmgm'];
+    const czr = p.books['caesars'];
+    if (!dk && !fd) continue;
+    const pr  = dk || fd;
+    const ml  = pr.line;
+    const mp  = pr.price;
+    const dko = mp > 0 ? '+' + mp : String(mp);
+    const fmt = (b) => b ? (b.price > 0 ? '+' + b.price : String(b.price)) : dko;
+
+    // Score confidence from odds
+    const oddsNum = parseInt(dko.replace('+',''));
+    let conf = 52;
+    if (dko.startsWith('-')) {
+      const o = Math.abs(oddsNum);
+      if (o >= 160) conf = 80; else if (o >= 135) conf = 73;
+      else if (o >= 115) conf = 65; else if (o >= 105) conf = 58;
+    } else {
+      if (oddsNum >= 160) conf = 38; else if (oddsNum >= 130) conf = 42;
+      else if (oddsNum >= 110) conf = 47;
+    }
+    const tier = conf >= 75 ? 'elite' : conf >= 63 ? 'strong' : conf >= 50 ? 'neutral' : 'fade';
+
+    props.push({
+      playerName: p.playerName, gameId: p.gameId,
+      statType: p.statType, direction: 'over',
+      line: ml, confidence: conf, tier,
+      dkLine: dk?.line||ml,  dkOdds:  fmt(dk),
+      fdLine: fd?.line||ml,  fdOdds:  fmt(fd),
+      mgmLine:mgm?.line||ml, mgmOdds: fmt(mgm),
+      czrLine:czr?.line||ml, czrOdds: fmt(czr),
+      ppLine: ml, udLine: ml, udOdds: dko,
+      rebetLine: ml, rebetOdds: dko,
+      altLines: buildAltLines(ml, dko),
+      date: p.date,
+    });
+  }
+
+  // Sort by confidence
+  props.sort((a,b) => b.confidence - a.confidence);
+  store.liveProps = props;
+  console.log('✅ Odds API: ' + props.length + ' props loaded');
 }
 
 // ── ESPN FETCH ──

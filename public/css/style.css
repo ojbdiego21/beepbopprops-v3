@@ -438,3 +438,11 @@ footer{background:var(--dkblue);border-top:1px solid var(--bord);padding:14px;te
 .stats-log-table td{ padding:5px 8px;text-align:center;border-bottom:1px solid rgba(255,255,255,.03); }
 .stats-log-table td:first-child{ text-align:left; }
 .stats-log-table tr:last-child td{ border-bottom:none; }
+
+/* ── PROPS SECTION TITLES ── */
+.props-section-title{
+  font-family:'Bebas Neue',cursive;font-size:18px;color:var(--red);
+  letter-spacing:1.5px;margin:16px 0 10px;display:flex;align-items:center;gap:10px;
+}
+.props-section-title::after{content:'';flex:1;height:1px;background:linear-gradient(to right,var(--bord),transparent);}
+.started-title{color:var(--muted)!important;font-size:15px!important;}
