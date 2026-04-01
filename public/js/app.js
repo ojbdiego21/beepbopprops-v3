@@ -183,7 +183,7 @@ function buildPropCard(p) {
       + (p.reasoning ? '<div class="reason-text">'+p.reasoning+'</div>' : '')
       + '<div class="prop-actions">'
       + '<button class="btn-add-pick" data-pick-id="'+pickId+'" onclick="addPick(this,\''+safeLabel+'\',\''+safeName+'\',\''+safeGame+'\','+conf+',\''+p.statType+'\',\''+pid+'\',\''+pickId+'\')">＋ Add to Slip</button>'
-      + '<button class="btn-shot-map" onclick="openShotMap(\''+safeName+'\',\''+pid+'\',\''+safeGame.split(\' vs \')[0]+'\',\''+((p.opponent||\'\').replace(/\'/g,\'\\\'\')+'\')+',\''+p.statType+'\')" title="Shot Map">📍 Shot Map</button>'
+      + '<button class="btn-shot-map" data-name="'+safeName+'" data-pid="'+pid+'" data-team="'+(p.team||'')+'" data-opp="'+(p.opponent||'')+'" data-stat="'+p.statType+'" onclick="openShotMapFromCard(this)" title="Shot Map">📍 Shot Map</button>'
       + '</div>'
     + '</div>'
   + '</div>';
@@ -627,4 +627,3 @@ function updateMobileBtn(){
   var ct=btn.querySelector('.slip-count');
   if(ct)ct.textContent=slipPicks.length;
 }
-// updated 

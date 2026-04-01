@@ -264,3 +264,12 @@ document.addEventListener('DOMContentLoaded', function() {
   // Escape key
   document.addEventListener('keydown', function(e){ if(e.key==='Escape' && shotMapOpen) closeShotMap(); });
 });
+
+window.openShotMapFromCard = function(btn) {
+  var name = btn.getAttribute('data-name');
+  var pid  = btn.getAttribute('data-pid');
+  var team = btn.getAttribute('data-team');
+  var opp  = btn.getAttribute('data-opp');
+  var stat = btn.getAttribute('data-stat');
+  window.openShotMap(name, pid, team, opp, stat);
+};
