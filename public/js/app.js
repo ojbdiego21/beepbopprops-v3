@@ -627,3 +627,4 @@ function updateMobileBtn(){
   var ct=btn.querySelector('.slip-count');
   if(ct)ct.textContent=slipPicks.length;
 }
+// updated 
