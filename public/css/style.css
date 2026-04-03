@@ -1292,3 +1292,9 @@ body.props-tab-active { padding-bottom:70px; }
 .team-logo-wrap { display:flex; align-items:center; justify-content:center; width:52px; height:52px; }
 .team-logo-img { width:48px; height:48px; object-fit:contain; }
 
+
+/* ── STATS AI ANALYTICAL CARD ── */
+.sm-ai-card { background:var(--surf2); border:1px solid var(--bord); border-radius:12px; padding:14px; }
+.sm-ai-label { font-size:9px; font-weight:700; color:var(--red); letter-spacing:.5px; margin-bottom:8px; }
+.sm-ai-body { font-size:13px; color:var(--txt); line-height:1.8; }
+.sm-ai-body br + br { display:block; margin:4px 0; }

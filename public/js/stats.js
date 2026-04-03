@@ -1,7 +1,7 @@
-// BeepBopStats — Pure NBA API game logs, StatMuse-style. No AI fluff.
+// BeepBopStats — Game logs via BDL API + AI analysis for StatMuse-style questions
 
 var PLAYER_IDS = {
-  // 2025 Draft class — all verified from nba.com/player/ID URLs
+  // 2025 Draft class
   'kon knueppel':1642851,'kon':1642851,'knueppel':1642851,
   'dylan harper':1642844,'harper':1642844,
   'vj edgecombe':1642845,'edgecombe':1642845,'vj':1642845,
@@ -10,18 +10,16 @@ var PLAYER_IDS = {
   'tre johnson':1642848,
   'nolan traore':1642849,'traore':1642849,
   'derik queen':1642852,'queen':1642852,
-  'devin carter':1642853,'carter':1642853,
+  'devin carter':1642853,
   'egor demin':1642856,'demin':1642856,
   'maxime raynaud':1642857,'raynaud':1642857,
   'cooper flagg':1642843,'flagg':1642843,
-  // 2024 Draft class
   'reed sheppard':1641844,'sheppard':1641844,
   'cody williams':1642262,
   'taylor hendricks':1642269,'hendricks':1642269,
-  'ja\'kobe walter':1642270,'jakobe walter':1642270,'walter':1642270,
+  "ja'kobe walter":1642270,'jakobe walter':1642270,
   'kyle filipowski':1642271,'filipowski':1642271,
-  'walter clayton':1642383,'walter clayton':1642383,
-  'zaccharie risacher':1642262,
+  'walter clayton':1642383,
   // Stars
   'lebron james':2544,'lebron':2544,
   'stephen curry':201939,'steph curry':201939,'curry':201939,
@@ -52,7 +50,7 @@ var PLAYER_IDS = {
   'anthony davis':203076,'ad':203076,'davis':203076,
   'kawhi leonard':202695,'kawhi':202695,
   'ja morant':1629630,'ja':1629630,'morant':1629630,
-  'de\'aaron fox':1628368,'fox':1628368,
+  "de'aaron fox":1628368,'fox':1628368,
   'karl-anthony towns':1626157,'towns':1626157,'kat':1626157,
   'zion williamson':1629627,'zion':1629627,
   'paolo banchero':1631094,'banchero':1631094,
@@ -87,12 +85,10 @@ var PLAYER_IDS = {
   'rj barrett':1629628,'barrett':1629628,
   'saddiq bey':1630218,'bey':1630218,
   'ziaire williams':1630533,'ziaire':1630533,
-  'nick richards':1630236,'richards':1630236,
+  'nick richards':1630236,'nick richards':1630236,
   'kobe brown':1641843,
-  'ryan rollins':1631115,'rollins':1631115,
   'dominick barlow':1631116,'barlow':1631116,
   'ousmane dieng':1631117,'dieng':1631117,
-  'cade cunningham':1630595,'cade':1630595,
   'josh giddey':1630581,'giddey':1630581,
   'nikola vucevic':202696,'vucevic':202696,
   'lauri markkanen':1628374,'markkanen':1628374,
@@ -100,21 +96,26 @@ var PLAYER_IDS = {
   'og anunoby':1628384,'og':1628384,
   'immanuel quickley':1630193,'quickley':1630193,
   'draymond green':203110,'draymond':203110,
-  'andrew wiggins':203952,'wiggins':203952,
-  'tyrese haliburton':1630169,
   'matas buzelis':1642267,'buzelis':1642267,
   'cam thomas':1631105,
   'scoot henderson':1641706,'scoot':1641706,
   'jalen williams':1631112,
   'aaron gordon':203932,'gordon':203932,
-  'kelly oubre':1626162,'oubre':1626162,
-  'tobias harris':202699,
   'tari eason':1631107,'eason':1631107,
 };
 
+// Detect if query is a game log request or an analytical question
+function isGameLogQuery(q) {
+  var q2 = q.toLowerCase();
+  // Game log signals: player name + "last N" or "stats" or "game log"
+  var hasN = /last\s*\d+/.test(q2);
+  var hasLog = /game.?log|this season|season stats/.test(q2);
+  var hasPlayer = !!findPlayer(q2);
+  return hasPlayer && (hasN || hasLog);
+}
+
 function findPlayer(q) {
-  q = q.toLowerCase().trim();
-  // Try progressively shorter matches
+  q = q.toLowerCase();
   for (var name in PLAYER_IDS) {
     if (q.includes(name)) return {id: PLAYER_IDS[name], name: name};
   }
@@ -126,58 +127,86 @@ function parseLastN(q) {
   return m ? Math.min(parseInt(m[1]), 25) : 10;
 }
 
-// Format date from NBA API
-function fmtDate(d) {
-  if (!d) return '';
-  return d.substring(0, 10);
+// ── GAME LOG FETCH ──
+async function fetchGameLog(playerId, playerName, lastN) {
+  var url = '/api/nba/gamelog?playerId=' + playerId + '&playerName=' + encodeURIComponent(playerName);
+  var r = await fetch(url);
+  var d = await r.json();
+  if (!d.success) throw new Error(d.error || 'API error');
+
+  var rows = d.rows || [];
+
+  // Handle NBA Stats API format
+  if (!rows.length && d.data && d.data.resultSets) {
+    var headers = d.data.resultSets[0].headers;
+    var rowSet = d.data.resultSets[0].rowSet;
+    var idx = function(k){ return headers.indexOf(k); };
+    rows = rowSet.map(function(r) {
+      return {
+        date: (r[idx('GAME_DATE')]||'').split('T')[0],
+        matchup: r[idx('MATCHUP')]||'',
+        result: r[idx('WL')]||'',
+        pts: r[idx('PTS')]||0, reb: r[idx('REB')]||0, ast: r[idx('AST')]||0,
+        stl: r[idx('STL')]||0, blk: r[idx('BLK')]||0, tov: r[idx('TOV')]||0,
+        fgm: r[idx('FGM')]||0, fga: r[idx('FGA')]||0,
+        fg3m: r[idx('FG3M')]||0, fg3a: r[idx('FG3A')]||0,
+        ftm: r[idx('FTM')]||0, fta: r[idx('FTA')]||0,
+        min: r[idx('MIN')]||0, plusMinus: r[idx('PLUS_MINUS')]||0,
+      };
+    });
+  }
+
+  return rows.slice(0, lastN);
 }
 
-function avg(games, key) {
-  if (!games.length) return '0.0';
-  var sum = games.reduce(function(s, g) { return s + (parseFloat(g[key]) || 0); }, 0);
-  return (sum / games.length).toFixed(1);
-}
+// ── RENDER STATMUSE TABLE ──
+function renderTable(games, playerName, subtitle, oppFilter) {
+  // Client-side opponent filter
+  if (oppFilter) {
+    games = games.filter(function(g) {
+      return (g.matchup||'').toLowerCase().includes(oppFilter.toLowerCase());
+    });
+  }
 
-function fgPctStr(games) {
-  var fgm = games.reduce(function(s,g){ return s+(parseFloat(g.fgm)||0); }, 0);
-  var fga = games.reduce(function(s,g){ return s+(parseFloat(g.fga)||0); }, 0);
-  return fga > 0 ? ((fgm/fga)*100).toFixed(1)+'%' : '--';
-}
+  if (!games.length) {
+    var msg = oppFilter ? 'No games found vs ' + oppFilter + ' in this range.' : 'No games found.';
+    return '<div class="sm-empty">' + msg + '</div>';
+  }
 
-function renderTable(games, playerName, subtitle) {
-  if (!games.length) return '<div class="sm-empty">No games found in NBA stats API.</div>';
-  var wins = games.filter(function(g){ return g.result === 'W'; }).length;
-  var aPts = avg(games,'pts'), aReb = avg(games,'reb'), aAst = avg(games,'ast');
-  var aStl = avg(games,'stl'), aBlk = avg(games,'blk'), aTov = avg(games,'tov');
-  var fg = fgPctStr(games);
+  function avg(key) {
+    return (games.reduce(function(s,g){ return s+(parseFloat(g[key])||0); },0)/games.length).toFixed(1);
+  }
+  function fgPct() {
+    var m = games.reduce(function(s,g){ return s+(parseFloat(g.fgm)||0); },0);
+    var a = games.reduce(function(s,g){ return s+(parseFloat(g.fga)||0); },0);
+    return a>0 ? ((m/a)*100).toFixed(1)+'%' : '--';
+  }
+  var wins = games.filter(function(g){ return g.result==='W'; }).length;
 
   var html = '<div class="sm-card">';
   html += '<div class="sm-header"><div class="sm-player-name">' + cap(playerName) + '</div>';
-  html += '<div class="sm-subtitle">' + subtitle + '</div></div>';
-  // Averages
+  html += '<div class="sm-subtitle">' + subtitle + (oppFilter?' · vs '+oppFilter.toUpperCase():'') + '</div></div>';
   html += '<div class="sm-avgs">'
-    + smA(aPts,'PTS','#FFD700') + smA(aReb,'REB','#22d3ee') + smA(aAst,'AST','#a855f7')
-    + smA(aStl,'STL','#22c55e') + smA(aBlk,'BLK','#f97316') + smA(aTov,'TOV','#e52222')
-    + smA(fg,'FG%','#94a3b8') + smA(wins+'-'+(games.length-wins),'W-L','#fff')
+    + smA(avg('pts'),'PTS','#FFD700') + smA(avg('reb'),'REB','#22d3ee')
+    + smA(avg('ast'),'AST','#a855f7') + smA(avg('stl'),'STL','#22c55e')
+    + smA(avg('blk'),'BLK','#f97316') + smA(avg('tov'),'TOV','#e52222')
+    + smA(fgPct(),'FG%','#94a3b8') + smA(wins+'-'+(games.length-wins),'W-L','#fff')
     + '</div>';
-  // Table
   html += '<div class="sm-table-wrap"><table class="sm-table"><thead><tr>'
     + '<th style="text-align:left">Date</th><th>Opp</th><th>W/L</th>'
     + '<th class="gold">PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th>'
     + '<th>TO</th><th>FG</th><th>3PT</th><th>FT</th><th>+/-</th><th>MIN</th>'
     + '</tr></thead><tbody>';
+
   games.forEach(function(g, i) {
-    var hi30 = parseFloat(g.pts) >= 30;
-    var hi10r = parseFloat(g.reb) >= 10;
-    var hi10a = parseFloat(g.ast) >= 10;
     var pm = parseFloat(g.plusMinus)||0;
     html += '<tr class="'+(i%2===0?'sm-even':'')+'">'
       + '<td class="sm-date">'+(g.date||'')+'</td>'
-      + '<td class="sm-matchup">'+(g.matchup||'').replace(/[A-Z]+\s+vs\.\s+/,'vs ')+'</td>'
-      + '<td class="'+(g.result==='W'?'sm-win':'sm-loss')+'">'+(g.result||'')+'</td>'
-      + '<td class="sm-pts'+(hi30?' sm-hi':'')+'">'+(g.pts||0)+'</td>'
-      + '<td class="'+(hi10r?'sm-hi':'sm-stat')+'">'+(g.reb||0)+'</td>'
-      + '<td class="'+(hi10a?'sm-hi':'sm-stat')+'">'+(g.ast||0)+'</td>'
+      + '<td class="sm-matchup">'+(g.matchup||'')+'</td>'
+      + '<td class="'+(g.result==='W'?'sm-win':'sm-loss')+'">'+(g.result||'-')+'</td>'
+      + '<td class="sm-pts'+(parseFloat(g.pts)>=30?' sm-hi':'')+'">'+(g.pts||0)+'</td>'
+      + '<td class="'+(parseFloat(g.reb)>=10?'sm-hi':'')+'">'+(g.reb||0)+'</td>'
+      + '<td class="'+(parseFloat(g.ast)>=10?'sm-hi':'')+'">'+(g.ast||0)+'</td>'
       + '<td>'+(g.stl||0)+'</td><td>'+(g.blk||0)+'</td>'
       + '<td class="sm-tov">'+(g.tov||0)+'</td>'
       + '<td class="sm-small">'+(g.fgm||0)+'/'+(g.fga||0)+'</td>'
@@ -191,14 +220,33 @@ function renderTable(games, playerName, subtitle) {
   return html;
 }
 
-function smA(v, l, c) {
-  return '<div class="sm-avg-item"><div class="sm-avg-val" style="color:'+c+'">'+v+'</div><div class="sm-avg-lbl">'+l+'</div></div>';
+function smA(v,l,c){ return '<div class="sm-avg-item"><div class="sm-avg-val" style="color:'+c+'">'+v+'</div><div class="sm-avg-lbl">'+l+'</div></div>'; }
+function cap(s){ return (s||'').split(' ').map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }).join(' '); }
+
+// ── PARSE OPPONENT FROM QUERY ──
+var TEAM_ABBRS = {
+  'celtics':'BOS','lakers':'LAL','warriors':'GSW','bucks':'MIL','knicks':'NYK',
+  'heat':'MIA','nuggets':'DEN','cavaliers':'CLE','cavs':'CLE','clippers':'LAC',
+  'suns':'PHX','mavericks':'DAL','mavs':'DAL','76ers':'PHI','sixers':'PHI',
+  'thunder':'OKC','spurs':'SAS','rockets':'HOU','timberwolves':'MIN','wolves':'MIN',
+  'raptors':'TOR','jazz':'UTA','hawks':'ATL','magic':'ORL','pacers':'IND',
+  'pistons':'DET','bulls':'CHI','nets':'BKN','hornets':'CHA','grizzlies':'MEM',
+  'pelicans':'NOP','blazers':'POR','trail blazers':'POR','kings':'SAC','wizards':'WAS',
+};
+
+function parseOpp(q) {
+  var q2 = q.toLowerCase();
+  // Check "vs X" or "against X" or "@ X"
+  for (var name in TEAM_ABBRS) {
+    if (q2.includes(name)) return TEAM_ABBRS[name];
+  }
+  // Check direct abbrevs
+  var m = q2.match(/\bvs\.?\s+([a-z]{2,3})\b/) || q2.match(/\bagainst\s+([a-z]{2,3})\b/);
+  if (m) return m[1].toUpperCase();
+  return null;
 }
 
-function cap(s) {
-  return (s||'').split(' ').map(function(w){ return w.charAt(0).toUpperCase()+w.slice(1); }).join(' ');
-}
-
+// ── MAIN SEARCH ──
 window.searchStats = async function() {
   var inp = document.getElementById('stats-input');
   var q = inp ? inp.value.trim() : '';
@@ -207,65 +255,49 @@ window.searchStats = async function() {
   addUserMsg(q);
   var tid = addTyping();
 
-  var found = findPlayer(q);
-  var lastN = parseLastN(q);
+  // Route: game log or analytical question?
+  if (isGameLogQuery(q)) {
+    // GAME LOG via API
+    var found = findPlayer(q);
+    var lastN = parseLastN(q);
+    var oppFilter = parseOpp(q);
 
-  if (!found) {
-    removeTyping(tid);
-    addMsg('<div class="sm-empty">Player not recognized. Try: "LeBron last 10", "Giannis last 5", "Kon Knueppel stats", "Suggs last 10"</div>');
-    return;
-  }
-
-  try {
-    // Pass both NBA ID (for fallback) and name (for BDL search)
-    var url = '/api/nba/gamelog?playerId=' + found.id + '&playerName=' + encodeURIComponent(found.name);
-    var r = await fetch(url);
-    var d = await r.json();
-    removeTyping(tid);
-
-    if (!d.success) {
-      addMsg('<div class="sm-empty">Could not load game log for ' + cap(found.name) + '. API may be temporarily unavailable — try again in a moment.</div>');
-      return;
+    try {
+      // Fetch more if filtering by opponent so we have enough after filter
+      var fetchN = oppFilter ? Math.min(lastN * 5, 82) : lastN;
+      var games = await fetchGameLog(found.id, found.name, fetchN);
+      removeTyping(tid);
+      if (!games.length) {
+        addMsg('<div class="sm-empty">No games found for ' + cap(found.name) + ' in 2025-26. Player may be inactive.</div>');
+        return;
+      }
+      var subtitle = 'Last ' + games.length + ' games · 2025-26';
+      addMsg(renderTable(games, found.name, subtitle, oppFilter));
+    } catch(e) {
+      removeTyping(tid);
+      addMsg('<div class="sm-empty">Could not load game log — try again. (' + e.message + ')</div>');
     }
 
-    // Handle both ESPN format (d.rows) and NBA Stats format (d.data.resultSets)
-    var games = [];
-    if (d.rows && d.rows.length) {
-      // ESPN format — already parsed server-side
-      games = d.rows.slice(0, lastN);
-    } else if (d.data && d.data.resultSets && d.data.resultSets[0]) {
-      var headers = d.data.resultSets[0].headers;
-      var rowSet = d.data.resultSets[0].rowSet;
-      var idx = function(k){ return headers.indexOf(k); };
-      games = rowSet.slice(0, lastN).map(function(row) {
-        return {
-          date:      fmtDate(row[idx('GAME_DATE')]),
-          matchup:   row[idx('MATCHUP')]||'',
-          result:    row[idx('WL')]||'',
-          pts:       row[idx('PTS')]||0,  reb: row[idx('REB')]||0,  ast: row[idx('AST')]||0,
-          stl:       row[idx('STL')]||0,  blk: row[idx('BLK')]||0,  tov: row[idx('TOV')]||0,
-          fgm:       row[idx('FGM')]||0,  fga: row[idx('FGA')]||0,
-          fg3m:      row[idx('FG3M')]||0, fg3a:row[idx('FG3A')]||0,
-          ftm:       row[idx('FTM')]||0,  fta: row[idx('FTA')]||0,
-          min:       row[idx('MIN')]||0,  plusMinus: row[idx('PLUS_MINUS')]||0,
-        };
+  } else {
+    // ANALYTICAL QUESTION via AI
+    try {
+      var r = await fetch('/api/stats/ask', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question: q})
       });
+      var d = await r.json();
+      removeTyping(tid);
+      var answer = d.success ? d.answer : 'Could not answer that — try rephrasing.';
+      addMsg('<div class="sm-ai-card"><div class="sm-ai-label">🤖 BeepBopStats</div><div class="sm-ai-body">' + esc(answer) + '</div></div>');
+    } catch(e) {
+      removeTyping(tid);
+      addMsg('<div class="sm-empty">Connection error — try again.</div>');
     }
-
-    if (!games.length) {
-      addMsg('<div class="sm-empty">No game log found for ' + cap(found.name) + ' in 2025-26. Player may not have played yet.</div>');
-      return;
-    }
-
-    var sub = 'Last ' + games.length + ' games · 2025-26 season';
-    addMsg(renderTable(games, found.name, sub));
-
-  } catch(e) {
-    removeTyping(tid);
-    addMsg('<div class="sm-empty">Connection error — try again. (' + e.message + ')</div>');
   }
 };
 
+// ── UI HELPERS ──
 function addUserMsg(text) {
   var chat = document.getElementById('stats-chat');
   if (!chat) return;
@@ -316,15 +348,20 @@ window.initStats = function() {
   var el = document.getElementById('stats-suggestions');
   if(!el) return;
   var chips = [
+    // Game log queries
     'LeBron last 10','Giannis last 5','Curry last 10',
     'Kon Knueppel last 10','Banchero last 5','Jokic last 10',
-    'Mitchell last 10','Brunson last 5','Wemby last 10',
-    'Derik Queen last 10','Trae Young last 5','SGA last 10',
-    'Ace Bailey last 10','Dylan Harper last 5','Suggs last 10',
-    'Jeremiah Fears last 10','Flagg last 10','Sengun last 5',
+    'LeBron last 10 vs Celtics','Mitchell last 5 vs Lakers',
+    // Analytical queries
+    'What positions do the Bulls struggle to guard?',
+    'Top fouling teams in the NBA',
+    'Best defensive teams this season',
+    'Shooting guards vs Bulls this season',
+    'Which team allows the most points to centers?',
+    'Warriors weaknesses on defense',
   ];
   el.innerHTML = chips.map(function(s){
-    return '<div class="stats-chip" onclick="runSearch(\''+s+'\')">' + s + '</div>';
+    return '<div class="stats-chip" onclick="runSearch(\'' + s.replace(/'/g,"\\'") + '\')">' + s + '</div>';
   }).join('');
 };
 
