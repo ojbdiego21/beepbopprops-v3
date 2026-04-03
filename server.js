@@ -308,7 +308,7 @@ const PHOTO_IDS = {
   'Jalen Brunson':'1628973',
   'Jalen Green':'1630224',
   'Jalen Johnson':'1630552',
-  'Jalen Suggs':'1630534',
+  'Jalen Suggs':'1630591',
   'Jamal Murray':'1627750',
   'James Harden':'201935',
   'James Wiseman':'1630164',
@@ -384,7 +384,7 @@ const PHOTO_IDS = {
   'Quentin Grimes':'1629656',
   'Jabari Smith Jr':'1631095',
   'Jabari Smith Jr.':'1631095',
-  'Reed Sheppard':'1642848',
+  'Reed Sheppard':'1641844',
   'R.J. Barrett':'1629628',
   'Devin Carter':'1642853',
   'Saddiq Bey':'1630218',
@@ -421,6 +421,15 @@ const PHOTO_IDS = {
   'OG Anunoby':'1628384',
   'Precious Achiuwa':'1630173',
   'Immanuel Quickley':'1630193',
+
+  'Dylan Harper':'1642844',
+  'VJ Edgecombe':'1642845',
+  'Ace Bailey':'1642846',
+  'Tre Johnson':'1642848',
+  'Nolan Traore':'1642849',
+  'Kon Knueppel':'1642851',
+  'Egor Demin':'1642856',
+  'Walter Clayton Jr':'1642383',
 };
 
 function processOddsData(games) {

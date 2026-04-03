@@ -1287,3 +1287,8 @@ body.props-tab-active { padding-bottom:70px; }
 .stats-ai-bubble{background:rgba(229,34,34,.06);border:1px solid rgba(229,34,34,.15);border-radius:10px;padding:10px 12px;}
 .stats-ai-label{font-size:9px;font-weight:700;color:var(--red);letter-spacing:.5px;margin-bottom:4px;}
 .stats-ai-text{font-size:12px;color:var(--txt);line-height:1.7;}
+
+/* ── REAL TEAM LOGOS IN GAME CARDS ── */
+.team-logo-wrap { display:flex; align-items:center; justify-content:center; width:52px; height:52px; }
+.team-logo-img { width:48px; height:48px; object-fit:contain; }
+

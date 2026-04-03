@@ -74,9 +74,9 @@ function renderGames(games) {
         + (isLive ? '<span class="gc-live">● LIVE</span>' : '<span class="badge '+tc+'">'+(g.tier||'neutral').toUpperCase()+'</span>')
       + '</div>'
       + '<div class="matchup">'
-        + '<div class="team"><div class="team-emoji">'+(EMOJI[g.awayTeam]||'🏀')+'</div><div class="team-abbr">'+g.awayTeam+'</div>'+(isLive||isFinal?'<div class="team-score">'+g.awayScore+'</div>':'')+'<div class="team-rec">'+g.awayRecord+'</div></div>'
+        + '<div class="team"><div class="team-logo-wrap">'+(NBA_TEAM_IDS[g.awayTeam]?'<img src="https://cdn.nba.com/logos/nba/'+NBA_TEAM_IDS[g.awayTeam]+'/global/L/logo.svg" class="team-logo-img">':'<span class="team-emoji">🏀</span>')+'</div><div class="team-abbr">'+g.awayTeam+'</div>'+(isLive||isFinal?'<div class="team-score">'+g.awayScore+'</div>':'')+'<div class="team-rec">'+g.awayRecord+'</div></div>'
         + '<div class="vs-mid"><div class="vs-at">@</div><div class="gspread">'+g.spread+'</div><div class="gtotal">O/U '+g.total+'</div></div>'
-        + '<div class="team"><div class="team-emoji">'+(EMOJI[g.homeTeam]||'🏀')+'</div><div class="team-abbr">'+g.homeTeam+'</div>'+(isLive||isFinal?'<div class="team-score">'+g.homeScore+'</div>':'')+'<div class="team-rec">'+g.homeRecord+'</div></div>'
+        + '<div class="team"><div class="team-logo-wrap">'+(NBA_TEAM_IDS[g.homeTeam]?'<img src="https://cdn.nba.com/logos/nba/'+NBA_TEAM_IDS[g.homeTeam]+'/global/L/logo.svg" class="team-logo-img">':'<span class="team-emoji">🏀</span>')+'</div><div class="team-abbr">'+g.homeTeam+'</div>'+(isLive||isFinal?'<div class="team-score">'+g.homeScore+'</div>':'')+'<div class="team-rec">'+g.homeRecord+'</div></div>'
       + '</div>'
       + '<div class="prob-row"><span class="plabel">'+g.awayTeam+' '+ap+'%</span><div class="pbar"><div class="pfill" style="width:'+ap+'%"></div></div><span class="plabel">'+g.homeTeam+' '+hp+'%</span></div>'
       + '<div class="gc-foot">'+(g.topPicks||[]).map(function(p){return'<span class="badge b-strong">'+p+'</span>';}).join('')+'</div>'
