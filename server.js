@@ -400,6 +400,27 @@ const PHOTO_IDS = {
   'Ja\'Kobe Walter':'1642270',
   'JaKobe Walter':'1642270',
   'Dylan Cardwell':'1642858',
+
+  'Pascal Siakam':'1627783',
+  'Tyrese Haliburton':'1630169',
+  'Andrew Nembhard':'1630217',
+  'Bennedict Mathurin':'1631119',
+  'Aaron Nesmith':'1630175',
+  'Tyrese Maxey':'1630178',
+  'Ben Sheppard':'1641844',
+  'Obi Toppin':'1630167',
+  'Jalen Williams':'1631112',
+  'Tre Jones':'1630170',
+  'Nikola Vucevic':'202696',
+  'Darius Garland':'1629636',
+  'Sam Merrill':'1630216',
+  'Tobias Harris':'202699',
+  'Kelly Oubre Jr':'1626162',
+  'Isaiah Hartenstein':'1628392',
+  'Miles McBride':'1630540',
+  'OG Anunoby':'1628384',
+  'Precious Achiuwa':'1630173',
+  'Immanuel Quickley':'1630193',
 };
 
 function processOddsData(games) {

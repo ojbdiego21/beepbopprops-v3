@@ -139,6 +139,8 @@ function renderProps(props) {
   }
 
   document.getElementById('props-content').innerHTML = html;
+  // Build game filter buttons
+  if (window.allProps && window.allProps.length) buildPropsGameFilter(window.allProps);
 }
 
 function buildPropCard(p) {
@@ -542,6 +544,18 @@ function showTab(id,el){
   document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('nav a').forEach(function(a){a.classList.remove('active');});
   document.getElementById(id).classList.add('active'); el.classList.add('active');
+  // Show slip panel ONLY on props tab, hide on all others
+  var slip = document.querySelector('.slip-panel');
+  var layout = document.querySelector('.main-layout');
+  if (slip && layout) {
+    if (id === 'tab-props') {
+      slip.style.display = '';
+      layout.style.gridTemplateColumns = '';
+    } else {
+      slip.style.display = 'none';
+      layout.style.gridTemplateColumns = '1fr';
+    }
+  }
 }
 
 var _propFilterType = 'all';
@@ -577,7 +591,13 @@ function applyPropsFilter() {
       var team = (c.dataset.team||'').toLowerCase();
       searchMatch = name.includes(_propSearchText) || team.includes(_propSearchText);
     }
-    var show = typeMatch && searchMatch;
+    // Game filter
+    var gameMatch = true;
+    if (typeof _propGameFilter !== 'undefined' && _propGameFilter !== 'all') {
+      var ct = (c.dataset.team||'').toLowerCase();
+      gameMatch = _propGameFilter.includes(ct.split(' ')[0]) || _propGameFilter.includes(ct.split(' ')[1]||'@@');
+    }
+    var show = typeMatch && searchMatch && gameMatch;
     c.style.display = show ? '' : 'none';
     if (show) visible++;
   });
@@ -768,4 +788,35 @@ function updateSlipBadge() {
   } else {
     badge.style.display = 'none';
   }
+}
+
+// ── PROPS GAME FILTER (like PrizePicks) ──
+var _propGameFilter = 'all';
+
+function filterPropsByGame(gameKey, btn) {
+  _propGameFilter = gameKey;
+  document.querySelectorAll('.pgame-btn').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  applyPropsFilter();
+}
+
+function buildPropsGameFilter(props) {
+  var row = document.getElementById('props-game-filter-row');
+  if (!row) return;
+  var games = {};
+  props.forEach(function(p) {
+    if (p.team && p.opponent) {
+      var away = p.team; var home = p.opponent;
+      var key = away.toLowerCase() + '_vs_' + home.toLowerCase();
+      games[key] = away + ' vs ' + home;
+    }
+  });
+  var btns = '<button class="pgame-btn active" data-game="all" onclick="filterPropsByGame(this.dataset.game,this)">🏀 All Games</button>';
+  var seen = {};
+  Object.entries(games).forEach(function(e) {
+    var key = e[0]; var label = e[1];
+    if (seen[key]) return; seen[key] = 1;
+    btns += '<button class="pgame-btn" data-game="' + key + '" onclick="filterPropsByGame(this.dataset.game,this)">' + label + '</button>';
+  });
+  row.innerHTML = btns;
 }

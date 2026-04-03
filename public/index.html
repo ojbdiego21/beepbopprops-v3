@@ -147,6 +147,10 @@
 
       <div id="tab-props" class="tab-content">
         <div class="sec-title">🎯 Player Props — 30+ Picks</div>
+        <!-- Game filter row like PrizePicks -->
+        <div id="props-game-filter-row" class="props-game-row">
+          <button class="pgame-btn active" data-game="all" onclick="filterPropsByGame('all',this)">All Games</button>
+        </div>
         <div class="props-search-row">
           <input type="text" id="props-search" class="props-search-input" placeholder="🔍 Search player or team... (e.g. LeBron, Lakers, Hawks)" oninput="searchProps(this.value)" />
           <button class="props-search-clear" onclick="clearPropsSearch()" title="Clear">✕</button>
