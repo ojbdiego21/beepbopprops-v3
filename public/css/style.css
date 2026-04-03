@@ -953,3 +953,28 @@ body::before {
   100%{transform:translateY(-220px) rotate(20deg);opacity:0}
 }
 
+
+/* ── LOUNGE AUDIO PLAYER ── */
+.lounge-player {
+  position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:10px;
+  background:rgba(10,5,20,0.85);border:1px solid rgba(57,255,20,0.3);
+  border-radius:40px;padding:8px 16px;z-index:20;
+  backdrop-filter:blur(8px);min-width:280px;
+  box-shadow:0 0 20px rgba(57,255,20,0.1);
+}
+.lp-icon { font-size:18px;animation:lp-spin 3s linear infinite; }
+@keyframes lp-spin{0%,100%{transform:rotate(0deg)}50%{transform:rotate(15deg)}}
+.lp-info { flex:1; }
+.lp-track { font-size:11px;color:#39ff14;font-weight:600;letter-spacing:.5px; }
+.lp-artist { font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.5px; }
+.lp-controls { display:flex;align-items:center;gap:6px; }
+.lp-btn {
+  padding:4px 10px;border-radius:12px;font-size:10px;font-weight:700;
+  background:rgba(57,255,20,0.15);border:1px solid rgba(57,255,20,0.4);
+  color:#39ff14;cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.lp-btn:hover { background:rgba(57,255,20,0.3); }
+.lp-vol {
+  width:55px;accent-color:#39ff14;cursor:pointer;
+}

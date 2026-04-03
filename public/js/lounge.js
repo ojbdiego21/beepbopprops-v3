@@ -92,6 +92,7 @@ function renderLounge() {
 
   startLoungeSmoke();
   startLoungeNotes();
+  setTimeout(initLoungeAudio, 300);
 }
 
 function bbSitting() {
@@ -236,3 +237,204 @@ document.addEventListener('DOMContentLoaded', function() {
     if (id === 'tab-lounge') setTimeout(renderLounge, 50);
   };
 });
+
+// ── LOUNGE AUDIO PLAYER ──
+var loungeAudio = null;
+var loungeAudioStarted = false;
+
+function initLoungeAudio() {
+  if (loungeAudioStarted) return;
+  loungeAudioStarted = true;
+
+  // Add audio player UI to lounge
+  var el = document.getElementById('break-lounge-canvas');
+  if (!el) return;
+
+  var playerHtml = `
+<div class="lounge-player" id="lounge-player">
+  <div class="lp-icon">🎵</div>
+  <div class="lp-info">
+    <div class="lp-track" id="lp-track">One Love Vibes</div>
+    <div class="lp-artist">🌿 Reggae Radio</div>
+  </div>
+  <div class="lp-controls">
+    <button class="lp-btn" onclick="loungePlayPause()" id="lp-play-btn">▶ Play</button>
+    <input type="range" class="lp-vol" id="lp-vol" min="0" max="1" step="0.05" value="0.4" oninput="setLoungeVol(this.value)">
+    <span style="font-size:10px;color:var(--muted)">🔊</span>
+  </div>
+</div>`;
+
+  el.insertAdjacentHTML('afterbegin', playerHtml);
+
+  // Use Web Audio API to generate a chill reggae-style ambient beat
+  buildReggaeAudio();
+}
+
+var audioCtx = null;
+var masterGain = null;
+var isPlaying = false;
+var scheduledNodes = [];
+
+function buildReggaeAudio() {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.4;
+    masterGain.connect(audioCtx.destination);
+  } catch(e) {
+    console.log('Web Audio not supported');
+  }
+}
+
+function loungePlayPause() {
+  if (!audioCtx) buildReggaeAudio();
+  if (!audioCtx) return;
+
+  if (isPlaying) {
+    stopReggae();
+    document.getElementById('lp-play-btn').textContent = '▶ Play';
+    isPlaying = false;
+  } else {
+    audioCtx.resume();
+    startReggae();
+    document.getElementById('lp-play-btn').textContent = '⏸ Pause';
+    isPlaying = true;
+  }
+}
+
+function setLoungeVol(v) {
+  if (masterGain) masterGain.gain.value = parseFloat(v);
+}
+
+function stopReggae() {
+  scheduledNodes.forEach(function(n) {
+    try { n.stop(); n.disconnect(); } catch(e){}
+  });
+  scheduledNodes = [];
+}
+
+// Generate a reggae-style beat using Web Audio API
+// Reggae: offbeat skank on 2&4, bass on 1&3, drums
+function startReggae() {
+  if (!audioCtx || !masterGain) return;
+  var bpm = 75;
+  var beat = 60 / bpm;
+  var bar = beat * 4;
+  var now = audioCtx.currentTime + 0.05;
+  var bars = 32; // loop length
+
+  for (var b = 0; b < bars; b++) {
+    var t = now + b * bar;
+
+    // Kick drum on beat 1
+    schedKick(t);
+    schedKick(t + beat * 2);
+
+    // Snare on 2 and 4
+    schedSnare(t + beat);
+    schedSnare(t + beat * 3);
+
+    // Reggae skank - offbeat chord stabs (+ of 1, + of 2, etc.)
+    schedSkank(t + beat * 0.5);
+    schedSkank(t + beat * 1.5);
+    schedSkank(t + beat * 2.5);
+    schedSkank(t + beat * 3.5);
+
+    // Bass line: root on 1, fifth on 3
+    schedBass(t, 55.0); // A1
+    schedBass(t + beat * 0.75, 55.0);
+    schedBass(t + beat * 2, 82.4); // E2
+    schedBass(t + beat * 2.75, 82.4);
+
+    // Hi-hat pattern
+    for (var h = 0; h < 8; h++) {
+      schedHihat(t + h * beat * 0.5, h % 2 === 0 ? 0.3 : 0.15);
+    }
+  }
+}
+
+function schedKick(time) {
+  var osc = audioCtx.createOscillator();
+  var env = audioCtx.createGain();
+  osc.connect(env); env.connect(masterGain);
+  osc.frequency.setValueAtTime(150, time);
+  osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.3);
+  env.gain.setValueAtTime(0.8, time);
+  env.gain.exponentialRampToValueAtTime(0.01, time + 0.3);
+  osc.start(time); osc.stop(time + 0.3);
+  scheduledNodes.push(osc);
+}
+
+function schedSnare(time) {
+  var buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.2, audioCtx.sampleRate);
+  var data = buf.getChannelData(0);
+  for (var i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 3000);
+  var src = audioCtx.createBufferSource();
+  var env = audioCtx.createGain();
+  var filt = audioCtx.createBiquadFilter();
+  filt.type = 'bandpass'; filt.frequency.value = 1800; filt.Q.value = 0.8;
+  src.buffer = buf;
+  src.connect(filt); filt.connect(env); env.connect(masterGain);
+  env.gain.setValueAtTime(0.4, time);
+  env.gain.exponentialRampToValueAtTime(0.001, time + 0.18);
+  src.start(time); src.stop(time + 0.2);
+  scheduledNodes.push(src);
+}
+
+function schedSkank(time) {
+  // Reggae skank chord (minor seventh feel)
+  var freqs = [220, 277.2, 329.6, 415.3]; // Am7 voicing
+  freqs.forEach(function(f) {
+    var osc = audioCtx.createOscillator();
+    var env = audioCtx.createGain();
+    osc.type = 'sawtooth';
+    osc.connect(env); env.connect(masterGain);
+    osc.frequency.value = f;
+    env.gain.setValueAtTime(0.06, time);
+    env.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+    osc.start(time); osc.stop(time + 0.1);
+    scheduledNodes.push(osc);
+  });
+}
+
+function schedBass(time, freq) {
+  var osc = audioCtx.createOscillator();
+  var env = audioCtx.createGain();
+  var filt = audioCtx.createBiquadFilter();
+  filt.type = 'lowpass'; filt.frequency.value = 300;
+  osc.type = 'triangle';
+  osc.connect(filt); filt.connect(env); env.connect(masterGain);
+  osc.frequency.value = freq;
+  env.gain.setValueAtTime(0.55, time);
+  env.gain.exponentialRampToValueAtTime(0.01, time + 0.35);
+  osc.start(time); osc.stop(time + 0.38);
+  scheduledNodes.push(osc);
+}
+
+function schedHihat(time, vol) {
+  var buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.05, audioCtx.sampleRate);
+  var data = buf.getChannelData(0);
+  for (var i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  var src = audioCtx.createBufferSource();
+  var env = audioCtx.createGain();
+  var filt = audioCtx.createBiquadFilter();
+  filt.type = 'highpass'; filt.frequency.value = 7000;
+  src.buffer = buf;
+  src.connect(filt); filt.connect(env); env.connect(masterGain);
+  env.gain.setValueAtTime(vol * 0.15, time);
+  env.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+  src.start(time); src.stop(time + 0.05);
+  scheduledNodes.push(src);
+}
+
+// Auto-restart loop when it ends
+setInterval(function() {
+  if (isPlaying && audioCtx) {
+    var now = audioCtx.currentTime;
+    // Check if nodes are all done - restart if needed
+    scheduledNodes = scheduledNodes.filter(function(n) {
+      try { return n.context.state !== 'closed'; } catch(e) { return false; }
+    });
+    if (scheduledNodes.length < 10) startReggae();
+  }
+}, 8000);
