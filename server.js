@@ -646,6 +646,111 @@ async function fetchESPN() {
 }
 
 // ── ROUTES ──
+
+// GAMES
+app.get('/api/games', (req,res) => {
+  const games = store.games.map(g => {
+    const rawH = g.homeWinProb||50;
+    const hp = Math.round(rawH), ap = 100-hp;
+    const gap = Math.abs(hp-50);
+    const tier = gap>=35?'elite':gap>=20?'strong':gap>=8?'neutral':'fade';
+    const fav = hp>50?g.homeTeam:g.awayTeam;
+    const favP = Math.max(hp,ap);
+    const picks = favP>=85?[fav+' Win',fav+' -ATS']:favP>=70?[fav+' Win','Check Spread']:['Close Game'];
+    return {...g, homeWinProb:hp, awayWinProb:ap, tier, topPicks:picks};
+  });
+  res.json({success:true, count:games.length, games});
+});
+
+// PROPS — live from Odds API, fallback to seeded
+app.get('/api/props', (req,res) => {
+  const tOrd={elite:0,strong:1,neutral:2,fade:3};
+  let props = store.liveProps.length > 0 ? store.liveProps : [...SEEDED_PROPS];
+  props = [...props].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
+  if (req.query.type) props=props.filter(p=>p.statType===req.query.type);
+  if (req.query.tier) props=props.filter(p=>p.tier===req.query.tier);
+  const source = store.liveProps.length > 0 ? 'live' : 'seeded';
+  res.json({success:true, count:props.length, source, props});
+});
+
+// INJURIES
+app.get('/api/injuries', (req,res) => res.json({success:true, count:store.injuries.length, injuries:store.injuries}));
+
+// H2H
+app.get('/api/h2h/:t1/:t2', async (req,res) => {
+  try {
+    const t1=req.params.t1.toUpperCase(), t2=req.params.t2.toUpperCase();
+    const TIDS={ATL:1610612737,BOS:1610612738,BKN:1610612751,CHA:1610612766,CHI:1610612741,CLE:1610612739,DAL:1610612742,DEN:1610612743,DET:1610612765,GSW:1610612744,HOU:1610612745,IND:1610612754,LAC:1610612746,LAL:1610612747,MEM:1610612763,MIA:1610612748,MIL:1610612749,MIN:1610612750,NOP:1610612740,NYK:1610612752,OKC:1610612760,ORL:1610612753,PHI:1610612755,PHX:1610612756,POR:1610612757,SAC:1610612758,SAS:1610612759,TOR:1610612761,UTA:1610612762,WAS:1610612764};
+    const id1=TIDS[t1];
+    if (!id1) return res.json({success:false,error:'Unknown team: '+t1});
+    const {data}=await axios.get(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${id1}/schedule`,{timeout:8000});
+    const matchups=(data.events||[]).filter(e=>(e.competitions?.[0]?.competitors||[]).some(c=>c.team?.abbreviation===t2)).slice(-5).map(e=>{
+      const comp=e.competitions[0];
+      const home=comp.competitors.find(c=>c.homeAway==='home');
+      const away=comp.competitors.find(c=>c.homeAway==='away');
+      return {date:(e.date||'').split('T')[0],winner:home?.winner?home.team.abbreviation:away?.team?.abbreviation,score:(away?.score||0)+'-'+(home?.score||0),location:home?.team?.abbreviation===t1?'Home':'Away'};
+    });
+    const t1w=matchups.filter(m=>m.winner===t1).length;
+    res.json({success:true,h2h:{team1:t1,team2:t2,last5Games:matchups,team1Wins:t1w,team2Wins:matchups.length-t1w}});
+  } catch(e){res.status(500).json({success:false,error:e.message});}
+});
+
+// AI STATS CHAT
+app.post('/api/stats/ask', async (req,res) => {
+  try {
+    const { question, history, slipContext, gameLogContext } = req.body||{};
+    if (!question) return res.status(400).json({success:false,error:'No question'});
+    if (!process.env.ANTHROPIC_API_KEY) return res.json({success:true, answer:'Add ANTHROPIC_API_KEY in Railway to unlock AI stats chat!'});
+
+    const gamesCtx = store.games.slice(0,8).map(g=>g.awayTeam+' @ '+g.homeTeam+' ('+g.tipoff+')').join(', ');
+    const injCtx   = store.injuries.slice(0,12).map(i=>i.playerName+' ('+i.team+') - '+i.status).join(', ');
+
+    const systemPrompt = `You are BeepBopStats — an expert NBA analyst for BeepBopProps$. Be direct, specific, accurate. Under 150 words unless analyzing a parlay.
+
+CURRENT 2025-26 ROSTERS (trade deadline Feb 2026):
+Luka Doncic→LAL, Anthony Davis→WAS, Trae Young→WAS, CJ McCollum→ATL, Darius Garland→LAC, James Harden→CLE, Kevin Durant→HOU, Dyson Daniels→ATL, Jonathan Kuminga→ATL, Cooper Flagg→DAL (rookie). Kyrie Irving OUT season. Cade Cunningham OUT season.
+
+TONIGHT: ${gamesCtx}
+INJURIES: ${injCtx}
+${gameLogContext ? 'GAME LOG DATA: '+gameLogContext : ''}
+${slipContext ? 'CURRENT SLIP: '+slipContext : ''}`;
+
+    const { data } = await axios.post('https://api.anthropic.com/v1/messages', {
+      model:'claude-haiku-4-5-20251001', max_tokens:400,
+      system: systemPrompt,
+      messages: [
+        ...(Array.isArray(history) ? history.slice(-8) : []),
+        {role:'user', content: question}
+      ]
+    }, { headers:{'x-api-key':process.env.ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01','Content-Type':'application/json'} });
+
+    const answer = data.content?.[0]?.text || 'No answer available.';
+
+    // Try game log fetch
+    let gameLog = null;
+    const PID = {'lebron':2544,'curry':201939,'giannis':203507,'jokic':203999,'tatum':1628369,'mitchell':1628378,'brunson':1628973,'booker':1626164,'durant':201142,'lamelo':1630163,'maxey':1630178,'wemby':1641705,'wembanyama':1641705,'garland':1629636,'harden':201935,'reaves':1630559,'flagg':1642843,'sengun':1630578,'luka':1629029,'sga':1628983,'mobley':1630596,'edwards':1630162,'trae':1629027,'davis':203076,'banchero':1631094,'jalen johnson':1630552};
+    const qL = question.toLowerCase();
+    let pid = null;
+    for (const [n,id] of Object.entries(PID)) { if (qL.includes(n)) { pid=id; break; } }
+    if (pid) {
+      try {
+        const glRes = await axios.get('https://stats.nba.com/stats/playergamelogs?PlayerID='+pid+'&Season=2025-26&SeasonType=Regular+Season&PerMode=Totals&LeagueID=00', {
+          timeout:8000, headers:{'User-Agent':'Mozilla/5.0','Referer':'https://www.nba.com','Origin':'https://www.nba.com','Accept':'application/json','x-nba-stats-origin':'stats','x-nba-stats-token':'true'}
+        });
+        const hdr = glRes.data.resultSets[0].headers;
+        const rows = glRes.data.resultSets[0].rowSet.slice(0,10);
+        const idx = k => hdr.indexOf(k);
+        gameLog = rows.map(r=>({date:(r[idx('GAME_DATE')]||'').split('T')[0],matchup:r[idx('MATCHUP')]||'',result:r[idx('WL')]||'',pts:r[idx('PTS')],reb:r[idx('REB')],ast:r[idx('AST')],stl:r[idx('STL')],blk:r[idx('BLK')],min:r[idx('MIN')],fgm:r[idx('FGM')],fga:r[idx('FGA')],fg3m:r[idx('FG3M')],fg3a:r[idx('FG3A')]}));
+      } catch(e) { /* silently fail */ }
+    }
+
+    res.json({success:true, answer, gameLog});
+  } catch(e) {
+    console.error('AI stats error:', e.message);
+    res.status(500).json({success:false, error:e.message});
+  }
+});
+
 app.get('/api/nba/positionshots', async (req,res) => {
   try {
     const { oppTeamId, excludeId } = req.query;
