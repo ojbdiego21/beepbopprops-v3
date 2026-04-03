@@ -329,11 +329,33 @@ async function loadInjuries() {
   try {
     var r = await fetch('/api/injuries'); var d = await r.json();
     if (!d.injuries.length) { document.getElementById('injuries-content').innerHTML='<div style="color:var(--muted);padding:20px;text-align:center">No injuries reported today. 🟢</div>'; return; }
+    
+    // Build game filter buttons from today's games
+    var games = window._liveGames || [];
+    var gameFilterEl = document.getElementById('injury-game-filters');
+    if (gameFilterEl && games.length) {
+      var btns = '<button class="fbtn active" style="font-size:10px;padding:5px 10px" onclick="filterInjuryGame(\'all\',this)">All Games</button>';
+      games.forEach(function(g) {
+        var key = (g.awayTeam + '_' + g.homeTeam).toLowerCase();
+        var label = g.awayTeam + ' @ ' + g.homeTeam;
+        btns += '<button class="fbtn" style="font-size:10px;padding:5px 10px" onclick="filterInjuryGame(\''+key+'\',this)">'+label+'</button>';
+      });
+      gameFilterEl.innerHTML = btns;
+    }
+
     var html = '<div class="inj-grid">';
     d.injuries.forEach(function(inj) {
       var s = (inj.status||'').toLowerCase();
       var ic = s.includes('out')?'ic-out':s.includes('quest')?'ic-q':'ic-dtd';
-      html += '<div class="inj-card '+(s.includes('quest')?'q':s.includes('prob')?'prob':'')+'">'
+      // Find which game this player is in
+      var playerTeam = (inj.team||'').toUpperCase();
+      var gameKey = 'all';
+      games.forEach(function(g) {
+        if (g.awayTeam === playerTeam || g.homeTeam === playerTeam) {
+          gameKey = (g.awayTeam + '_' + g.homeTeam).toLowerCase();
+        }
+      });
+      html += '<div class="inj-card '+(s.includes('quest')?'q':s.includes('prob')?'prob':'')+' inj-row" data-status="'+s+'" data-game="'+gameKey+'" data-team="'+playerTeam.toLowerCase()+'">'
         + '<div class="inj-name">'+inj.playerName+'<span class="inj-chip '+ic+'">'+inj.status+'</span></div>'
         + '<div class="inj-team">'+inj.team+' · '+(inj.injury||'')+'</div>'
         + '<div class="inj-imp">'+(inj.bettingImpact||'Monitor situation.')+'</div>'

@@ -361,6 +361,45 @@ const PHOTO_IDS = {
   'Wendell Carter Jr.':'1628976',
   'Zaccharie Risacher':'1642355',
   'Zach LaVine':'203897',
+
+  'Julius Randle':'203944',
+  'Cody Williams':'1642262',
+  'Jakob Poeltl':'1627751',
+  'Jeremiah Fears':'1642847',
+  'Payton Pritchard':'1630202',
+  'Brice Sensabaugh':'1641729',
+  'Brandon Ingram':'1627742',
+  'Ayo Dosunmu':'1630245',
+  'Nicolas Claxton':'1629651',
+  'Nic Claxton':'1629651',
+  'Rudy Gobert':'203497',
+  'Derrick White':'1628401',
+  'Kyle Filipowski':'1642271',
+  'Myles Turner':'1626167',
+  'Donte DiVincenzo':'1628978',
+  'Naji Marshall':'1630230',
+  'Neemias Queta':'1629674',
+  'Zion Williamson':'1629627',
+  'Derik Queen':'1642852',
+  'Quentin Grimes':'1629656',
+  'Jabari Smith Jr':'1631095',
+  'Jabari Smith Jr.':'1631095',
+  'Reed Sheppard':'1642848',
+  'R.J. Barrett':'1629628',
+  'Devin Carter':'1642853',
+  'Saddiq Bey':'1630218',
+  'Taylor Hendricks':'1642269',
+  'Ziaire Williams':'1630533',
+  'Ousmane Dieng':'1631117',
+  'Nick Richards':'1630236',
+  'Kobe Brown':'1641843',
+  'Maxime Raynaud':'1642857',
+  'Ryan Rollins':'1631115',
+  'Dominick Barlow':'1631116',
+  'Brandon Williams':'1629753',
+  'Ja\'Kobe Walter':'1642270',
+  'JaKobe Walter':'1642270',
+  'Dylan Cardwell':'1642858',
 };
 
 function processOddsData(games) {
@@ -368,7 +407,16 @@ function processOddsData(games) {
   for (const game of games) {
     for (const bm of (game.bookmakers || [])) {
       for (const mkt of (bm.markets || [])) {
-        const statType = mkt.key.replace('player_', '');
+        const rawStat = mkt.key.replace('player_', '');
+        // Format stat type nicely: points_rebounds -> Points+Rebounds
+        const statType = rawStat
+          .replace('points_rebounds_assists','Pts+Reb+Ast')
+          .replace('points_rebounds','Pts+Reb')
+          .replace('points_assists','Pts+Ast')
+          .replace('rebounds_assists','Reb+Ast')
+          .replace('double_double','Double-Double')
+          .replace('triple_double','Triple-Double')
+          .replace('_', ' ');
         for (const outcome of (mkt.outcomes || [])) {
           const pName = outcome.description || outcome.name;
           const key = pName + '|' + statType + '|' + game.id;
@@ -706,7 +754,7 @@ Answer the users NBA question in a helpful, conversational way. Be specific with
 
     const answer = data.content?.[0]?.text || 'No answer available.';
 
-    // Try to fetch game log if a player is mentioned
+    // Fetch game log FIRST so we can pass real data to AI
     let gameLog = null;
     const PLAYER_IDS = {
       'lebron':2544,'curry':201939,'giannis':203507,'jokic':203999,'tatum':1628369,

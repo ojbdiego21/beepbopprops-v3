@@ -212,7 +212,8 @@ window.searchStats = async function() {
           aiContext += ' Recent: '+recent3+'.';
         }
       } catch(e) {
-        gameLogHtml = '<div class="stats-api-note">📊 Live game log unavailable — AI using season knowledge.</div>';
+        // Don't show error — server will provide game log in response if available
+        gameLogHtml = '';
       }
     }
     var slipContext = buildSlipContext();
@@ -229,9 +230,9 @@ window.searchStats = async function() {
     var d = await r.json();
     // Add AI response to history
     if (d.success && d.answer) statsHistory.push({role:'assistant', content: d.answer});
-    // If server returned a game log, use it
+    // Always prefer server game log (it has proper NBA headers)
     var serverGameLog = d.gameLog;
-    if (serverGameLog && serverGameLog.length && !gameLogHtml) {
+    if (serverGameLog && serverGameLog.length) {
       // Build game log from server data
       var glHtml = '<div class="sl-card"><div class="sl-head"><div><div class="sl-title">Game Log</div><div class="sl-sub">'+serverGameLog.length+' games · 2025-26</div></div></div>';
       glHtml += '<div class="sl-table-wrap"><table class="sl-table"><thead><tr><th>Date</th><th>Matchup</th><th>W/L</th><th class="gold">PTS</th><th>REB</th><th>AST</th><th>FG</th><th>3PT</th><th>MIN</th></tr></thead><tbody>';
