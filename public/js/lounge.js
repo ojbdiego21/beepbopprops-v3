@@ -22,8 +22,7 @@ function renderLounge() {
     '    <button class="lp-btn" onclick="loungeNext()" style="padding:4px 8px">⏭</button>',
     '  </div>',
     '</div>',
-    // SoundCloud fallback embed (hidden, audio only)
-    '<div id="sc-wrap" style="position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;top:0;left:0"></div>',
+
     '</div>'
   ].join('');
 
@@ -336,55 +335,143 @@ function startLoungeCanvas(cv) {
   loop();
 }
 
-// ── AUDIO: SoundCloud embed ──
+// ── AUDIO: Web Audio reggae beat ──
+var _audioCtx = null;
+var _masterGain = null;
 var _loungePlaying = false;
-var _scLoaded = false;
-var _trackIdx = 0;
-var _tracks = [
-  { sc:'bob-marley-and-the-wailers/sun-is-shining-1',     label:'Sun Is Shining' },
-  { sc:'bob-marley/one-love-people-get-ready',            label:'One Love' },
-  { sc:'bob-marley-and-the-wailers/could-you-be-loved-2', label:'Could You Be Loved' },
-];
+var _loungeNodes = [];
+var _beatInterval = null;
+var _bpm = 78;
+
+function _beat() { return 60 / _bpm; }
+
+function _initAudio() {
+  if (_audioCtx) return;
+  _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  _masterGain = _audioCtx.createGain();
+  _masterGain.gain.value = 0.5;
+  _masterGain.connect(_audioCtx.destination);
+}
+
+function _kick(t) {
+  var o = _audioCtx.createOscillator();
+  var g = _audioCtx.createGain();
+  o.connect(g); g.connect(_masterGain);
+  o.frequency.setValueAtTime(160, t);
+  o.frequency.exponentialRampToValueAtTime(0.01, t + 0.35);
+  g.gain.setValueAtTime(0.9, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+  o.start(t); o.stop(t + 0.36);
+}
+
+function _snare(t) {
+  var buf = _audioCtx.createBuffer(1, _audioCtx.sampleRate * 0.15, _audioCtx.sampleRate);
+  var d = buf.getChannelData(0);
+  for (var i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / 2500);
+  var s = _audioCtx.createBufferSource();
+  var g = _audioCtx.createGain();
+  var f = _audioCtx.createBiquadFilter();
+  f.type = 'bandpass'; f.frequency.value = 2000; f.Q.value = 0.7;
+  s.buffer = buf; s.connect(f); f.connect(g); g.connect(_masterGain);
+  g.gain.setValueAtTime(0.35, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+  s.start(t); s.stop(t + 0.15);
+}
+
+function _skank(t) {
+  // Reggae offbeat chord stab - Am7 voicing
+  [220, 262, 330, 392].forEach(function(hz) {
+    var o = _audioCtx.createOscillator();
+    var g = _audioCtx.createGain();
+    o.type = 'sawtooth';
+    o.connect(g); g.connect(_masterGain);
+    o.frequency.value = hz;
+    g.gain.setValueAtTime(0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
+    o.start(t); o.stop(t + 0.08);
+  });
+}
+
+function _bass(t, hz) {
+  var o = _audioCtx.createOscillator();
+  var g = _audioCtx.createGain();
+  var f = _audioCtx.createBiquadFilter();
+  f.type = 'lowpass'; f.frequency.value = 280;
+  o.type = 'triangle';
+  o.connect(f); f.connect(g); g.connect(_masterGain);
+  o.frequency.value = hz;
+  g.gain.setValueAtTime(0.6, t);
+  g.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+  o.start(t); o.stop(t + 0.32);
+}
+
+function _hat(t, vol) {
+  var buf = _audioCtx.createBuffer(1, _audioCtx.sampleRate * 0.04, _audioCtx.sampleRate);
+  var d = buf.getChannelData(0);
+  for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  var s = _audioCtx.createBufferSource();
+  var g = _audioCtx.createGain();
+  var f = _audioCtx.createBiquadFilter();
+  f.type = 'highpass'; f.frequency.value = 8000;
+  s.buffer = buf; s.connect(f); f.connect(g); g.connect(_masterGain);
+  g.gain.setValueAtTime((vol||0.12), t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+  s.start(t); s.stop(t + 0.04);
+}
+
+function _playBar(startT) {
+  var b = _beat();
+  // Kick on 1 and 3
+  _kick(startT);
+  _kick(startT + b * 2);
+  // Snare on 2 and 4 (reggae drop)
+  _snare(startT + b);
+  _snare(startT + b * 3);
+  // Reggae skank: offbeats only (+of1, +of2, +of3, +of4)
+  _skank(startT + b * 0.5);
+  _skank(startT + b * 1.5);
+  _skank(startT + b * 2.5);
+  _skank(startT + b * 3.5);
+  // Bass line root-fifth
+  _bass(startT,        55.0);  // A1
+  _bass(startT + b*0.75, 55.0);
+  _bass(startT + b*2,    82.4); // E2
+  _bass(startT + b*2.75, 82.4);
+  // Hi-hats 8th notes
+  for (var i = 0; i < 8; i++) _hat(startT + i * b * 0.5, i%2===0 ? 0.12 : 0.07);
+}
 
 window.loungePlay = function() {
-  var wrap = document.getElementById('sc-wrap');
-  var btn  = document.getElementById('lp-play-btn');
-  var trk  = document.getElementById('lp-track');
-  if (!wrap) return;
-
-  if (!_scLoaded) {
-    _scLoaded = true;
-    var t = _tracks[_trackIdx];
-    if (trk) trk.textContent = t.label + ' — Bob Marley';
-    wrap.innerHTML = '<iframe id="sc-frame" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" '
-      + 'src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/' + t.sc
-      + '&color=%23FFD700&auto_play=true&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false"></iframe>';
-    wrap.style.cssText = 'position:relative;width:100%;height:0;overflow:hidden;opacity:0;pointer-events:none';
-    if (btn) btn.textContent = '⏸ Pause';
-    _loungePlaying = true;
-  } else if (_loungePlaying) {
-    // Pause — remove iframe
-    wrap.innerHTML = '';
-    _scLoaded = false;
-    if (btn) btn.textContent = '▶ Play';
+  _initAudio();
+  var btn = document.getElementById('lp-play-btn');
+  var trk = document.getElementById('lp-track');
+  if (_loungePlaying) {
+    // Stop
     _loungePlaying = false;
+    if (_beatInterval) { clearInterval(_beatInterval); _beatInterval = null; }
+    _masterGain.gain.setTargetAtTime(0, _audioCtx.currentTime, 0.1);
+    if (btn) btn.textContent = '▶ Play';
   } else {
-    // Resume
-    loungePlay();
+    // Start
+    _loungePlaying = true;
+    _masterGain.gain.setTargetAtTime(0.5, _audioCtx.currentTime, 0.1);
+    if (trk) trk.textContent = 'Reggae Vibes';
+    if (btn) btn.textContent = '⏸ Pause';
+    var barLen = _beat() * 4 * 1000;
+    var nextBar = _audioCtx.currentTime + 0.05;
+    _playBar(nextBar);
+    nextBar += _beat() * 4;
+    _beatInterval = setInterval(function() {
+      if (!_loungePlaying) return;
+      _playBar(_audioCtx.currentTime + 0.04);
+    }, barLen);
   }
 };
 
 window.loungeNext = function() {
-  _trackIdx = (_trackIdx + 1) % _tracks.length;
+  _bpm = _bpm === 78 ? 84 : _bpm === 84 ? 72 : 78;
   var trk = document.getElementById('lp-track');
-  if (trk) trk.textContent = _tracks[_trackIdx].label + ' — Bob Marley';
-  _scLoaded = false;
-  _loungePlaying = false;
-  var wrap = document.getElementById('sc-wrap');
-  if (wrap) wrap.innerHTML = '';
-  var btn = document.getElementById('lp-play-btn');
-  if (btn) btn.textContent = '▶ Play';
-  loungePlay();
+  if (trk) trk.textContent = 'Reggae Vibes — ' + _bpm + ' BPM';
 };
 
 document.addEventListener('DOMContentLoaded', function() {

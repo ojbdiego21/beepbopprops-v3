@@ -171,7 +171,7 @@ function buildPropCard(p) {
   var safeName  = (p.playerName||'').replace(/'/g,"\\'");
   var safeGame  = ((p.team||'')+(p.opponent?' vs '+p.opponent:'')).replace(/'/g,"\\'");
 
-  return '<div class="prop-card '+t+'" data-type="'+p.statType+'" data-tier="'+t+'" data-player="'+(p.playerName||'').toLowerCase()+'" data-team="'+(p.team||'')+' '+(p.opponent||'')+'">'
+  return '<div class="prop-card '+t+'" data-type="'+p.statType+'" data-tier="'+t+'" data-player="'+(p.playerName||'').toLowerCase()+'" data-team="'+(p.team||'').toLowerCase()+'_'+(p.opponent||'').toLowerCase()+'">'
     + '<div class="pp-head">'
       + '<div class="av"><img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+pid+'.png" onerror="this.style.display=\'none\'"></div>'
       + '<div class="pinfo"><div class="pname">'+p.playerName+'</div><div class="pteam">'+(p.team||'')+(p.opponent?' · vs '+p.opponent:'')+'</div></div>'
@@ -614,12 +614,14 @@ function applyPropsFilter() {
       var team = (c.dataset.team||'').toLowerCase();
       searchMatch = name.includes(_propSearchText) || team.includes(_propSearchText);
     }
-    // Game filter
+    // Game filter — data-team on card = "cha_bkn", button key = "cha_bkn"
     var gameMatch = true;
     if (typeof _propGameFilter !== 'undefined' && _propGameFilter !== 'all') {
-      var ct = (c.dataset.team||'').toLowerCase().replace(/\s+/g,'');
-      // key is like "min_okc" — check if card's team abbrev is in the key
-      gameMatch = _propGameFilter.split('_').some(function(part){ return ct.startsWith(part) || part.startsWith(ct.substring(0,2)); });
+      var ct = (c.dataset.team || '').toLowerCase().replace(/\s+/g,'_');
+      var gf = _propGameFilter.toLowerCase();
+      // Direct match OR reversed (away/home swapped)
+      var gp = gf.split('_'); var cp = ct.split('_');
+      gameMatch = (ct === gf) || (cp[0]===gp[1] && cp[1]===gp[0]);
     }
     var show = typeMatch && searchMatch && gameMatch;
     c.style.display = show ? '' : 'none';
@@ -829,45 +831,42 @@ function filterPropsByGame(gameKey, btn) {
 function buildPropsGameFilter(props) {
   var row = document.getElementById('props-game-filter-row');
   if (!row) return;
-  // Use live games data for logos + proper matchup names
-  var liveGames = window._liveGames || [];
+  // Always build from props data — same source as data-team on cards
+  // key = "cha_bkn" (lowercase, underscore), same as data-team
   var seen = {};
-  var btns = '<button class="pgame-btn pgame-all active" data-game="all" onclick="filterPropsByGame(this.dataset.game,this)"><span class="pgame-icon">🏀</span><span class="pgame-label">All Games</span></button>';
-  // First try to build from real game data with logos
-  liveGames.forEach(function(g) {
-    var key = (g.awayTeam + '_' + g.homeTeam).toLowerCase();
-    if (seen[key]) return; seen[key] = 1;
-    var awayLogo = 'https://cdn.nba.com/logos/nba/' + (NBA_TEAM_IDS[g.awayTeam]||'') + '/global/L/logo.svg';
-    var homeLogo = 'https://cdn.nba.com/logos/nba/' + (NBA_TEAM_IDS[g.homeTeam]||'') + '/global/L/logo.svg';
-    btns += '<button class="pgame-btn" data-game="' + key + '" onclick="filterPropsByGame(this.dataset.game,this)">'
-      + '<img src="' + awayLogo + '" class="pgame-logo">'
-      + '<span class="pgame-vs">' + g.awayTeam + ' vs ' + g.homeTeam + '</span>'
-      + '<img src="' + homeLogo + '" class="pgame-logo">'
+  var games = [];
+  props.forEach(function(p) {
+    if (!p.team || !p.opponent) return;
+    var awayAbbr = p.team.toUpperCase();
+    var homeAbbr = p.opponent.toUpperCase();
+    var key = awayAbbr.toLowerCase() + '_' + homeAbbr.toLowerCase();
+    if (seen[key]) return;
+    seen[key] = 1;
+    games.push({ key:key, away:awayAbbr, home:homeAbbr });
+  });
+  var btns = '<button class="pgame-btn active" data-game="all" onclick="filterPropsByGame(this.dataset.game,this)">🏀 All Games</button>';
+  games.forEach(function(g) {
+    var awayId = NBA_TEAM_IDS[g.away] || '';
+    var homeId = NBA_TEAM_IDS[g.home] || '';
+    var awayName = NBA_TEAM_NAMES[g.away] || g.away;
+    var homeName = NBA_TEAM_NAMES[g.home] || g.home;
+    var awayLogo = awayId ? '<img src="https://cdn.nba.com/logos/nba/'+awayId+'/global/L/logo.svg" class="pgame-logo">' : '';
+    var homeLogo = homeId ? '<img src="https://cdn.nba.com/logos/nba/'+homeId+'/global/L/logo.svg" class="pgame-logo">' : '';
+    btns += '<button class="pgame-btn" data-game="' + g.key + '" onclick="filterPropsByGame(this.dataset.game,this)">'
+      + awayLogo + '<span class="pgame-label">' + awayName + ' vs ' + homeName + '</span>' + homeLogo
     + '</button>';
   });
-  // Fallback: build from props data if no game data
-  if (liveGames.length === 0) {
-    var pgames = {};
-    props.forEach(function(p) {
-      if (p.team && p.opponent) {
-        var key = (p.team + '_' + p.opponent).toLowerCase();
-        if (!pgames[key]) pgames[key] = {away:p.team, home:p.opponent};
-      }
-    });
-    Object.entries(pgames).forEach(function(e) {
-      var key = e[0]; var g = e[1];
-      if (seen[key]) return; seen[key] = 1;
-      var awayLogo = 'https://cdn.nba.com/logos/nba/' + (NBA_TEAM_IDS[g.away]||'') + '/global/L/logo.svg';
-      var homeLogo = 'https://cdn.nba.com/logos/nba/' + (NBA_TEAM_IDS[g.home]||'') + '/global/L/logo.svg';
-      btns += '<button class="pgame-btn" data-game="' + key + '" onclick="filterPropsByGame(this.dataset.game,this)">'
-        + '<img src="' + awayLogo + '" class="pgame-logo">'
-        + '<span class="pgame-vs">' + g.away + ' vs ' + g.home + '</span>'
-        + '<img src="' + homeLogo + '" class="pgame-logo">'
-      + '</button>';
-    });
-  }
   row.innerHTML = btns;
 }
+
+var NBA_TEAM_NAMES = {
+  ATL:'Hawks',BOS:'Celtics',BKN:'Nets',CHA:'Hornets',CHI:'Bulls',
+  CLE:'Cavaliers',DAL:'Mavericks',DEN:'Nuggets',DET:'Pistons',GSW:'Warriors',
+  HOU:'Rockets',IND:'Pacers',LAC:'Clippers',LAL:'Lakers',MEM:'Grizzlies',
+  MIA:'Heat',MIL:'Bucks',MIN:'Timberwolves',NOP:'Pelicans',NYK:'Knicks',
+  OKC:'Thunder',ORL:'Magic',PHI:'76ers',PHX:'Suns',POR:'Blazers',
+  SAC:'Kings',SAS:'Spurs',TOR:'Raptors',UTA:'Jazz',WAS:'Wizards',
+};
 
 // NBA team ID lookup for logos
 var NBA_TEAM_IDS = {
