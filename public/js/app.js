@@ -169,7 +169,7 @@ function buildPropCard(p) {
   var safeName  = (p.playerName||'').replace(/'/g,"\\'");
   var safeGame  = ((p.team||'')+(p.opponent?' vs '+p.opponent:'')).replace(/'/g,"\\'");
 
-  return '<div class="prop-card '+t+'" data-type="'+p.statType+'" data-tier="'+t+'">'
+  return '<div class="prop-card '+t+'" data-type="'+p.statType+'" data-tier="'+t+'" data-player="'+(p.playerName||'').toLowerCase()+'" data-team="'+(p.team||'')+' '+(p.opponent||'')+'">'
     + '<div class="pp-head">'
       + '<div class="av"><img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+pid+'.png" onerror="this.style.display=\'none\'"></div>'
       + '<div class="pinfo"><div class="pname">'+p.playerName+'</div><div class="pteam">'+(p.team||'')+(p.opponent?' · vs '+p.opponent:'')+'</div></div>'
@@ -519,12 +519,52 @@ function showTab(id,el){
   document.getElementById(id).classList.add('active'); el.classList.add('active');
 }
 
+var _propFilterType = 'all';
+var _propSearchText = '';
+
 function filterProps(type,btn){
   document.querySelectorAll('.fbtn').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
-  document.querySelectorAll('.prop-card').forEach(function(c){
-    c.style.display=(type==='all'||c.dataset.type===type||c.dataset.tier===type)?'':'none';
+  _propFilterType = type;
+  applyPropsFilter();
+}
+
+function searchProps(val) {
+  _propSearchText = (val||'').toLowerCase().trim();
+  applyPropsFilter();
+}
+
+function clearPropsSearch() {
+  var inp = document.getElementById('props-search');
+  if (inp) inp.value = '';
+  _propSearchText = '';
+  applyPropsFilter();
+}
+
+function applyPropsFilter() {
+  var cards = document.querySelectorAll('.prop-card');
+  var visible = 0;
+  cards.forEach(function(c) {
+    var typeMatch = _propFilterType === 'all' || c.dataset.type === _propFilterType || c.dataset.tier === _propFilterType;
+    var searchMatch = true;
+    if (_propSearchText) {
+      var name = (c.dataset.player||'').toLowerCase();
+      var team = (c.dataset.team||'').toLowerCase();
+      searchMatch = name.includes(_propSearchText) || team.includes(_propSearchText);
+    }
+    var show = typeMatch && searchMatch;
+    c.style.display = show ? '' : 'none';
+    if (show) visible++;
   });
+  var info = document.getElementById('props-search-info');
+  if (info) {
+    if (_propSearchText) {
+      info.textContent = visible + ' prop' + (visible !== 1 ? 's' : '') + ' found for "' + _propSearchText + '"';
+      info.style.display = '';
+    } else {
+      info.style.display = 'none';
+    }
+  }
 }
 
 function showErr(id,msg){
@@ -626,4 +666,23 @@ function updateMobileBtn(){
   btn.style.display=slipPicks.length>0?'flex':'none';
   var ct=btn.querySelector('.slip-count');
   if(ct)ct.textContent=slipPicks.length;
+}
+
+function filterInjuries(status, btn) {
+  document.querySelectorAll('.injury-filter .fbtn').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var rows = document.querySelectorAll('.inj-row, .injury-item');
+  rows.forEach(function(r) {
+    var s = (r.dataset.status||'').toLowerCase();
+    r.style.display = (status === 'all' || s.includes(status)) ? '' : 'none';
+  });
+}
+
+function searchInjuries(val) {
+  val = (val||'').toLowerCase();
+  var rows = document.querySelectorAll('.inj-row, .injury-item');
+  rows.forEach(function(r) {
+    var text = r.textContent.toLowerCase();
+    r.style.display = text.includes(val) ? '' : 'none';
+  });
 }

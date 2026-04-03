@@ -146,6 +146,10 @@
 
       <div id="tab-props" class="tab-content">
         <div class="sec-title">🎯 Player Props — 30+ Picks</div>
+        <div class="props-search-row">
+          <input type="text" id="props-search" class="props-search-input" placeholder="🔍 Search player or team... (e.g. LeBron, Lakers, Hawks)" oninput="searchProps(this.value)" />
+          <button class="props-search-clear" onclick="clearPropsSearch()" title="Clear">✕</button>
+        </div>
         <div class="filter-bar">
           <button class="fbtn active" onclick="filterProps('all',this)">All Props</button>
           <button class="fbtn" onclick="filterProps('points',this)">Points</button>
@@ -157,6 +161,7 @@
           <button class="fbtn" onclick="filterProps('elite',this)">⭐ Elite Only</button>
           <button class="fbtn" onclick="filterProps('fade',this)">🚫 Fades</button>
         </div>
+        <div id="props-search-info" style="font-size:11px;color:var(--muted);padding:4px 0 6px;display:none"></div>
         <div id="props-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Scanning Props Board...</div><div class="lb-w"><div class="lb"></div></div></div></div>
       </div>
 
@@ -201,6 +206,15 @@
 
       <div id="tab-injuries" class="tab-content">
         <div class="sec-title">🏥 Injury Report</div>
+        <div class="filter-bar" style="margin-bottom:10px">
+          <button class="fbtn active" onclick="filterInjuries('all',this)">All</button>
+          <button class="fbtn" onclick="filterInjuries('out',this)">Out</button>
+          <button class="fbtn" onclick="filterInjuries('questionable',this)">Questionable</button>
+          <button class="fbtn" onclick="filterInjuries('probable',this)">Probable</button>
+        </div>
+        <div class="injury-search-row">
+          <input type="text" id="injury-search" class="props-search-input" placeholder="🔍 Search player or team..." oninput="searchInjuries(this.value)" />
+        </div>
         <div id="injuries-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Injuries...</div><div class="lb-w"><div class="lb"></div></div></div></div>
       </div>
 
