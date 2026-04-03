@@ -1,34 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BeepBopProps$ – Live NBA Props</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
-<link rel="stylesheet" href="/css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BeepBopProps$ — NBA Player Props</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
 </head>
 <body>
 
-<div id="toast"></div>
-
-<button id="mobile-slip-btn" onclick="openSlip()" style="display:none">
-  <span>🤖 My Slip</span>
-  <span class="slip-count">0</span>
-</button>
-
+<!-- MOBILE SLIP OVERLAY -->
 <div id="mobile-slip-overlay" onclick="if(event.target===this)closeSlip()">
   <div class="mobile-slip-inner">
     <div class="slip-head" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">
       <div><div class="slip-title">🤖 Pick Slip</div><div class="slip-sub">Your combined probability</div></div>
-      <button onclick="closeSlip()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">✕</button>
+      <button onclick="closeSlip()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
     </div>
-    <div style="padding:10px;overflow-y:auto;flex:1">
-      <div id="slip-empty-mobile" style="text-align:center;padding:20px;color:var(--muted);font-size:12px">
-        <span style="font-size:28px;display:block;margin-bottom:8px;opacity:.3">🕸️</span>
-        No picks yet! Go to Props tab.
-      </div>
-      <div id="slip-list-mobile" style="display:none"></div>
+    <div id="slip-empty-mobile" style="text-align:center;padding:20px;color:var(--muted);font-size:12px">
+      <div style="font-size:28px;margin-bottom:8px;opacity:.3">🕸️</div>No picks yet! Go to Props → tap + Add to Slip
     </div>
+    <div id="slip-list-mobile" style="display:none"></div>
     <div id="slip-calc-mobile" style="display:none;padding:12px 14px;background:rgba(0,0,0,.2);border-top:1px solid rgba(34,197,94,.15)">
       <div class="slip-prob-row"><span class="slip-prob-lbl">Combined Probability</span><span class="slip-prob-val" id="slip-pct-mobile">--</span></div>
       <div class="slip-bar"><div class="slip-bar-fill" id="slip-bar-mobile" style="width:0%"></div></div>
@@ -38,50 +30,6 @@
         <div class="slip-pout"><div class="slip-pout-lbl">PP Type</div><div class="slip-pout-val" id="slip-pp-mobile">--</div></div>
       </div>
       <div class="slip-formula" id="slip-formula-mobile">--</div>
-      <button class="btn-clear" onclick="clearSlip()">✕ Clear Slip</button>
-    </div>
-  </div>
-</div>
-
-<!-- MOBILE SLIP BUTTON (fixed bottom right) -->
-<button id="mobile-slip-btn" onclick="openSlip()" style="display:none">
-  <span>🤖 My Slip</span>
-  <span class="slip-count">0</span>
-</button>
-
-<!-- MOBILE SLIP OVERLAY (full screen popup) -->
-<div id="mobile-slip-overlay" onclick="if(event.target===this)closeSlip()">
-  <div class="mobile-slip-inner">
-    <div class="slip-head" style="display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div class="slip-title">🤖 Pick Slip</div>
-        <div class="slip-sub">Your combined probability</div>
-      </div>
-      <button onclick="closeSlip()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px">✕</button>
-    </div>
-    <div style="padding:10px;overflow-y:auto;flex:1">
-      <div id="slip-empty-mobile" style="text-align:center;padding:22px 8px;color:var(--muted);font-size:12px">
-        <span style="font-size:28px;display:block;margin-bottom:8px;opacity:.3">🕸️</span>
-        No picks yet!<br>Go to <strong>Props</strong> →<br>tap <em>+ Add to Slip</em>
-      </div>
-      <div id="slip-list-mobile" style="display:none"></div>
-    </div>
-    <div id="slip-calc-mobile" style="display:none;padding:12px 14px;background:rgba(0,0,0,.2);border-top:1px solid rgba(34,197,94,.15)">
-      <div id="slip-warn-mobile" class="slip-warn">⚠️ Same-game picks — correlation risk.</div>
-      <div class="slip-prob-row">
-        <span class="slip-prob-lbl">Combined Probability</span>
-        <span class="slip-prob-val" id="slip-pct-mobile">--%</span>
-      </div>
-      <div class="slip-bar"><div class="slip-bar-fill" id="slip-bar-mobile" style="width:0%"></div></div>
-      <div class="slip-tier" id="slip-tier-mobile">--</div>
-      <div class="slip-payout">
-        <div class="slip-pout"><div class="slip-pout-lbl">Est. DK Payout</div><div class="slip-pout-val" id="slip-dk-mobile">--</div></div>
-        <div class="slip-pout"><div class="slip-pout-lbl">PP Type</div><div class="slip-pout-val" id="slip-pp-mobile">--</div></div>
-      </div>
-      <div class="slip-formula" id="slip-formula-mobile">--</div>
-      <button class="slip-ai-btn" onclick="analyzeSlip('-mobile')">🤖 AI Analyze Slip</button>
-      <div id="slip-ai-mobile" style="display:none;margin-top:8px;padding:8px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);border-radius:7px;font-size:11px;color:var(--txt);line-height:1.7;overflow-y:auto;max-height:160px"></div>
-      <button class="btn-clear" onclick="clearSlip('-mobile')">✕ Clear Slip</button>
     </div>
   </div>
 </div>
@@ -92,8 +40,7 @@
     <div class="hmeta">
       <div class="live-pill">● LIVE</div>
       <div class="date-pill" id="date-display">--</div>
-      <!-- Mini slip — shows on non-props tabs -->
-      <button class="mini-slip-btn" id="mini-slip-btn" onclick="showTab('tab-props',document.querySelector('nav a[onclick*=tab-props]')); window.scrollTo(0,0);" style="display:none">
+      <button class="mini-slip-btn" id="mini-slip-btn" onclick="showTab('tab-props',document.querySelector('nav a[onclick*=tab-props]'));window.scrollTo(0,0);" style="display:none">
         🎯 Slip <span class="slip-badge" id="mini-slip-count">0</span>
       </button>
       <button class="refresh-btn" id="refresh-btn" onclick="loadAllData()">
@@ -101,6 +48,7 @@
       </button>
     </div>
   </div>
+  <div id="ticker" class="ticker-wrap"><div class="ticker-inner" id="ticker-inner">Loading...</div></div>
   <nav>
     <ul>
       <li><a href="#" class="active" onclick="showTab('tab-games',this)">🗓 Games</a></li>
@@ -111,224 +59,230 @@
       <li><a href="#" onclick="showTab('tab-parlays',this)">💰 Parlays</a></li>
       <li><a href="#" onclick="showTab('tab-injuries',this)">🏥 Injuries</a></li>
       <li><a href="#" onclick="showTab('tab-stats',this)">🔍 BeepBopStats</a></li>
-      <li><a href="#" onclick="showTab('tab-kryptonite',this);renderKryptonite()">☠️ BeepBop's Kryptonite</a></li>
-      <li><a href="#" onclick="showTab('tab-lounge',this)">🌿 BeepBop's Lounge</a></li>
+      <li><a href="#" onclick="showTab('tab-kryptonite',this);renderKryptonite()">☠️ Kryptonite</a></li>
+      <li><a href="#" onclick="showTab('tab-lounge',this)">🌿 Break Lounge</a></li>
     </ul>
   </nav>
 </header>
 
-<div class="ticker-bar">
-  <div class="ticker-inner" id="ticker-inner">
-    <div class="tick"><span class="dot"></span>Loading today's board...</div>
-    <div class="tick"><span class="dot"></span>BeepBopProps$ · DraftKings · FanDuel · BetMGM · Caesars · PrizePicks · Rebet</div>
-    <div class="tick"><span class="dot"></span>Tap any prop → Add to Slip → see your combined probability</div>
-    <div class="tick"><span class="dot"></span>Loading today's board...</div>
-    <div class="tick"><span class="dot"></span>BeepBopProps$ · DraftKings · FanDuel · BetMGM · Caesars · PrizePicks · Rebet</div>
-    <div class="tick"><span class="dot"></span>Tap any prop → Add to Slip → see your combined probability</div>
-  </div>
-</div>
+<div id="toast" class="toast"></div>
 
-<div class="wrap">
-  <div class="main-layout">
+<div class="main-layout">
 
-    <!-- LEFT CONTENT -->
-    <div id="left-content">
-      <div class="disclaimer">⚠️ BeepBopProps$ is for entertainment &amp; research only. Must be 21+ to wager. Please gamble responsibly.</div>
-      <div class="top-bar">
-        <div class="tier-legend">
-          <div class="tier-item"><div class="tier-dot" style="background:#FFD700"></div><strong style="color:#FFD700">ELITE</strong> 80%+</div>
-          <div class="tier-item"><div class="tier-dot" style="background:#00D4AA"></div><strong style="color:#00D4AA">STRONG</strong> 65-79%</div>
-          <div class="tier-item"><div class="tier-dot" style="background:#60a5fa"></div><strong style="color:#60a5fa">NEUTRAL</strong> 50-64%</div>
-          <div class="tier-item"><div class="tier-dot" style="background:#ff5555"></div><strong style="color:#ff5555">FADE</strong> &lt;50%</div>
-        </div>
-        <div id="last-updated-txt" style="font-size:10px;color:var(--muted)"></div>
+  <!-- LEFT CONTENT -->
+  <div id="left-content">
+    <div class="disclaimer">⚠️ BeepBopProps$ is for entertainment & research only. Must be 21+ to wager. Please gamble responsibly.</div>
+    <div class="top-bar">
+      <div class="tier-legend">
+        <div class="tier-item"><div class="tier-dot" style="background:#FFD700"></div><strong style="color:#FFD700">ELITE</strong> 80%+</div>
+        <div class="tier-item"><div class="tier-dot" style="background:#22d3ee"></div><strong style="color:#22d3ee">STRONG</strong> 65%+</div>
+        <div class="tier-item"><div class="tier-dot" style="background:#94a3b8"></div><strong style="color:#94a3b8">NEUTRAL</strong></div>
+        <div class="tier-item"><div class="tier-dot" style="background:#e52222"></div><strong style="color:#e52222">FADE</strong></div>
       </div>
-
-      <div id="tab-games" class="tab-content active">
-        <div class="sec-title">🤖 Today's Games</div>
-        <div id="games-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Schedule...</div><div class="lb-w"><div class="lb"></div></div></div></div>
-      </div>
-
-      <div id="tab-props" class="tab-content">
-        <div class="sec-title">🎯 Player Props — 30+ Picks</div>
-        <!-- Game filter row like PrizePicks -->
-        <div id="props-game-filter-row" class="props-game-row">
-          <button class="pgame-btn active" data-game="all" onclick="filterPropsByGame('all',this)">All Games</button>
-        </div>
-        <div class="props-search-row">
-          <input type="text" id="props-search" class="props-search-input" placeholder="🔍 Search player or team... (e.g. LeBron, Lakers, Hawks)" oninput="searchProps(this.value)" />
-          <button class="props-search-clear" onclick="clearPropsSearch()" title="Clear">✕</button>
-        </div>
-        <div class="filter-bar">
-          <button class="fbtn active" onclick="filterProps('all',this)">All</button>
-          <button class="fbtn" onclick="filterProps('points',this)">Points</button>
-          <button class="fbtn" onclick="filterProps('rebounds',this)">Rebounds</button>
-          <button class="fbtn" onclick="filterProps('assists',this)">Assists</button>
-          <button class="fbtn" onclick="filterProps('threes',this)">3-Pointers</button>
-          <button class="fbtn" onclick="filterProps('blocks',this)">Blocks</button>
-          <button class="fbtn" onclick="filterProps('steals',this)">Steals</button>
-          <button class="fbtn" onclick="filterProps('Pts+Reb',this)">Pts+Reb</button>
-          <button class="fbtn" onclick="filterProps('Pts+Ast',this)">Pts+Ast</button>
-          <button class="fbtn" onclick="filterProps('Reb+Ast',this)">Reb+Ast</button>
-          <button class="fbtn" onclick="filterProps('Pts+Reb+Ast',this)">Pts+Reb+Ast</button>
-          <button class="fbtn" onclick="filterProps('Double-Double',this)">Dbl-Dbl</button>
-          <button class="fbtn" onclick="filterProps('elite',this)">⭐ Elite</button>
-          <button class="fbtn" onclick="filterProps('fade',this)">🚫 Fade</button>
-        </div>
-        <div id="props-search-info" style="font-size:11px;color:var(--muted);padding:4px 0 6px;display:none"></div>
-        <div id="props-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Scanning Props Board...</div><div class="lb-w"><div class="lb"></div></div></div></div>
-      
-        <!-- SLIP PANEL AT BOTTOM OF PROPS -->
-        <div class="props-slip-bottom" id="props-slip-bottom">
-          <!-- DESKTOP SLIP PANEL (hidden on mobile) -->
-          <div class="slip-panel">
-            <div class="slip-box">
-              <div class="slip-head" onclick="toggleSlipPanel()" style="cursor:pointer">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div class="slip-title">🤖 Pick Slip</div>
-                  <span id="slip-count-badge" class="slip-badge" style="display:none">0</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  <div class="slip-sub" id="slip-sub-text">Add props → combined probability</div>
-                  <span id="slip-toggle-icon" style="font-size:16px;color:var(--muted);transition:transform .3s">▼</span>
-                </div>
-              </div>
-              <div id="slip-body-collapsible">
-              <div style="padding:10px">
-                <div id="slip-empty" style="text-align:center;padding:20px 8px;color:var(--muted);font-size:12px">
-                  <span style="font-size:28px;display:block;margin-bottom:8px;opacity:.3">🕸️</span>
-                  No picks yet!<br>Go to <strong>Props</strong> →<br>tap <em>+ Add to Slip</em>
-                </div>
-                <div id="slip-list" style="display:none"></div>
-              </div>
-              <div id="slip-calc" style="display:none;padding:12px 14px;background:rgba(0,0,0,.2);border-top:1px solid rgba(34,197,94,.15)">
-                <div id="slip-warn" class="slip-warn">⚠️ Same-game picks — correlation risk.</div>
-                <div class="slip-prob-row">
-                  <span class="slip-prob-lbl">Combined Probability</span>
-                  <span class="slip-prob-val" id="slip-pct">--%</span>
-                </div>
-                <div class="slip-bar"><div class="slip-bar-fill" id="slip-bar" style="width:0%"></div></div>
-                <div class="slip-tier" id="slip-tier">--</div>
-                <div class="slip-payout">
-                  <div class="slip-pout"><div class="slip-pout-lbl">Est. DK Payout</div><div class="slip-pout-val" id="slip-dk">--</div></div>
-                  <div class="slip-pout"><div class="slip-pout-lbl">PP Type</div><div class="slip-pout-val" id="slip-pp">--</div></div>
-                </div>
-                <div class="slip-formula" id="slip-formula">--</div>
-                <button class="slip-ai-btn" onclick="analyzeSlip('')">🤖 AI Analyze Slip</button>
-                <div id="slip-ai" style="display:none;margin-top:8px;padding:8px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);border-radius:7px;font-size:11px;color:var(--txt);line-height:1.7;overflow-y:auto;max-height:160px"></div>
-                <button class="btn-clear" onclick="clearSlip('')">✕ Clear Slip</button>
-              </div>
-              </div><!-- /slip-body-collapsible -->
-            </div><!-- /slip-box -->
-        </div>
-</div>
-
-      <div id="tab-altlines" class="tab-content">
-        <div class="sec-title">📊 Alternate Lines — All Books</div>
-        <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Every prop shows DraftKings, FanDuel, BetMGM, Caesars, PrizePicks &amp; Rebet — plus alternate lines at every half-point.</p>
-        <div class="filter-bar">
-          <button class="fbtn active" onclick="filterAlt('all',this)">All</button>
-          <button class="fbtn" onclick="filterAlt('points',this)">Points</button>
-          <button class="fbtn" onclick="filterAlt('rebounds',this)">Rebounds</button>
-          <button class="fbtn" onclick="filterAlt('assists',this)">Assists</button>
-          <button class="fbtn" onclick="filterAlt('threes',this)">3PM</button>
-          <button class="fbtn" onclick="filterAlt('blocks',this)">Blocks</button>
-        </div>
-        <div id="altlines-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Alt Lines...</div><div class="lb-w"><div class="lb"></div></div></div></div>
-      </div>
-
-      <div id="tab-live" class="tab-content">
-        <div class="sec-title">⚡ Live In-Game Props</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:6px 10px;background:rgba(229,34,34,.05);border-radius:6px;border:1px solid var(--bord)">Props auto-update every 60 seconds during games.</div>
-        <div id="live-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Tuning In Live...</div><div class="lb-w"><div class="lb"></div></div></div></div>
-      </div>
-
-      <div id="tab-h2h" class="tab-content">
-        <div class="sec-title">⚔️ Head-to-Head Lookup</div>
-        <div class="h2h-box">
-          <div class="h2h-inputs">
-            <select id="h2h-t1" class="h2h-sel"><option value="">Team 1</option></select>
-            <span class="h2h-vs">VS</span>
-            <select id="h2h-t2" class="h2h-sel"><option value="">Team 2</option></select>
-            <button class="h2h-btn" onclick="lookupH2H()">Search ⚔️</button>
-          </div>
-          <div id="h2h-result"></div>
-        </div>
-      </div>
-
-      <div id="tab-parlays" class="tab-content">
-        <div class="sec-title">💰 AI Parlay Builder</div>
-        <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Add picks to your slip from the Props tab. Pre-built parlays from today's top picks shown below.</p>
-        <div id="parlays-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Building Parlays...</div><div class="lb-w"><div class="lb"></div></div></div></div>
-      </div>
-
-      <div id="tab-injuries" class="tab-content">
-        <div class="sec-title">🏥 Injury Report</div>
-        <div id="injury-game-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-          <button class="fbtn active" style="font-size:10px;padding:5px 10px" onclick="filterInjuryGame('all',this)">All Games</button>
-        </div>
-        <div class="filter-bar" style="margin-bottom:10px">
-          <button class="fbtn active" onclick="filterInjuries('all',this)">All</button>
-          <button class="fbtn" onclick="filterInjuries('out',this)">Out</button>
-          <button class="fbtn" onclick="filterInjuries('questionable',this)">Questionable</button>
-          <button class="fbtn" onclick="filterInjuries('probable',this)">Probable</button>
-        </div>
-        <div class="injury-search-row">
-          <input type="text" id="injury-search" class="props-search-input" placeholder="🔍 Search player or team..." oninput="searchInjuries(this.value)" />
-        </div>
-        <div id="injuries-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Injuries...</div><div class="lb-w"><div class="lb"></div></div></div></div>
-      </div>
-
-            <div id="tab-stats" class="tab-content">
-        <div class="sec-title">🔍 BeepBopStats</div>
-        <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Ask anything — "LeBron vs Cavs last 10", "Who leads in scoring?", "Best props tonight"</p>
-        <div class="stats-suggestions" id="stats-suggestions" style="margin-bottom:12px"></div>
-        <div id="stats-chat" class="stats-chat">
-          <div id="stats-empty" class="stats-empty">
-            <div style="font-size:36px;margin-bottom:10px">🤖</div>
-            <div style="font-family:'Bebas Neue',cursive;font-size:20px;color:var(--red);letter-spacing:1px;margin-bottom:6px">BeepBopStats</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.7">Ask me anything about the NBA.<br>Stats · Matchups · Rosters · Props</div>
-          </div>
-        </div>
-        <div class="stats-input-row">
-          <input type="text" id="stats-input" class="stats-input" placeholder="Ask anything... LeBron vs Cavs, Curry 3PT%, best props tonight" />
-          <button class="stats-btn" onclick="searchStats()">Ask 🤖</button>
-        </div>
-        <div style="text-align:right;margin-top:6px"><button onclick="clearChat()" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer">Clear chat</button></div>
-      </div>
-</div>
-          </div>
-        </div>
-      </div>
-
+      <div id="last-updated-txt" style="font-size:10px;color:var(--muted)"></div>
     </div>
 
-      <div class="tip-card">
-        <div class="tip-title">🤖 SPIDER-SENSE TIPS</div>
-        <div class="tip-body">
-          • <strong>Alt Lines tab</strong> = best number across 6 books<br>
-          • <strong>Board refreshes every 15 min</strong> during games<br>
-          • <strong>2-leg slip:</strong> aim for 60%+ combined<br>
-          • <strong>3-leg slip:</strong> all Elite ≈ 60%<br>
-          • <strong>Same-game picks</strong> = correlation risk<br>
-          • Check <strong>Injuries</strong> before tip-off
+    <!-- GAMES TAB -->
+    <div id="tab-games" class="tab-content active">
+      <div class="sec-title">🤖 Today's Games</div>
+      <div id="games-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Schedule...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+    </div>
+
+    <!-- PROPS TAB -->
+    <div id="tab-props" class="tab-content">
+      <div class="sec-title">🎯 Player Props</div>
+      <!-- Game filter row -->
+      <div id="props-game-filter-row" class="props-game-row">
+        <button class="pgame-btn active" data-game="all" onclick="filterPropsByGame(this.dataset.game,this)">🏀 All Games</button>
+      </div>
+      <!-- Search bar -->
+      <div class="props-search-row">
+        <input type="text" id="props-search" class="props-search-input" placeholder="🔍 Search player or team..." oninput="searchProps(this.value)" />
+        <button class="props-search-clear" onclick="clearPropsSearch()" title="Clear">✕</button>
+      </div>
+      <!-- Stat type filters -->
+      <div class="filter-bar">
+        <button class="fbtn active" onclick="filterProps('all',this)">All</button>
+        <button class="fbtn" onclick="filterProps('points',this)">Points</button>
+        <button class="fbtn" onclick="filterProps('rebounds',this)">Rebounds</button>
+        <button class="fbtn" onclick="filterProps('assists',this)">Assists</button>
+        <button class="fbtn" onclick="filterProps('threes',this)">3-Pointers</button>
+        <button class="fbtn" onclick="filterProps('blocks',this)">Blocks</button>
+        <button class="fbtn" onclick="filterProps('steals',this)">Steals</button>
+        <button class="fbtn" onclick="filterProps('Pts+Reb',this)">Pts+Reb</button>
+        <button class="fbtn" onclick="filterProps('Pts+Ast',this)">Pts+Ast</button>
+        <button class="fbtn" onclick="filterProps('Reb+Ast',this)">Reb+Ast</button>
+        <button class="fbtn" onclick="filterProps('Pts+Reb+Ast',this)">Pts+Reb+Ast</button>
+        <button class="fbtn" onclick="filterProps('Double-Double',this)">Dbl-Dbl</button>
+        <button class="fbtn" onclick="filterProps('elite',this)">⭐ Elite</button>
+        <button class="fbtn" onclick="filterProps('fade',this)">🚫 Fade</button>
+      </div>
+      <div id="props-search-info" style="font-size:11px;color:var(--muted);padding:4px 0 6px;display:none"></div>
+      <div id="props-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Scanning Props Board...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+    </div>
+
+    <!-- ALT LINES TAB -->
+    <div id="tab-altlines" class="tab-content">
+      <div class="sec-title">📊 Alternate Lines — All Books</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Every prop shows DraftKings, FanDuel, BetMGM, Caesars, PrizePicks &amp; Rebet — plus alternate lines at every half-point.</p>
+      <div class="filter-bar">
+        <button class="fbtn active" onclick="filterAlt('all',this)">All</button>
+        <button class="fbtn" onclick="filterAlt('points',this)">Points</button>
+        <button class="fbtn" onclick="filterAlt('rebounds',this)">Rebounds</button>
+        <button class="fbtn" onclick="filterAlt('assists',this)">Assists</button>
+      </div>
+      <div id="altlines-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Alt Lines...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+    </div>
+
+    <!-- LIVE TAB -->
+    <div id="tab-live" class="tab-content">
+      <div class="sec-title">⚡ Live Scores</div>
+      <div id="live-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Fetching Live Scores...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+    </div>
+
+    <!-- H2H TAB -->
+    <div id="tab-h2h" class="tab-content">
+      <div class="sec-title">⚔️ Head to Head</div>
+      <div class="h2h-input-row">
+        <input type="text" id="h2h-t1" class="h2h-input" placeholder="Team 1 (e.g. LAL)" maxlength="3">
+        <span style="color:var(--muted);font-size:18px">vs</span>
+        <input type="text" id="h2h-t2" class="h2h-input" placeholder="Team 2 (e.g. CLE)" maxlength="3">
+        <button class="h2h-btn" onclick="loadH2H()">Compare</button>
+      </div>
+      <div id="h2h-content"><div style="color:var(--muted);font-size:12px;text-align:center;padding:20px">Enter two team abbreviations above</div></div>
+    </div>
+
+    <!-- PARLAYS TAB -->
+    <div id="tab-parlays" class="tab-content">
+      <div class="sec-title">💰 AI Parlay Builder</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Add picks from the Props tab. Pre-built parlays from today's top picks shown below.</p>
+      <div id="parlays-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Building Parlays...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+    </div>
+
+    <!-- INJURIES TAB -->
+    <div id="tab-injuries" class="tab-content">
+      <div class="sec-title">🏥 Injury Report</div>
+      <div id="injury-game-filters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="fbtn active" style="font-size:10px;padding:5px 10px" onclick="filterInjuryGame('all',this)">All Games</button>
+      </div>
+      <div class="filter-bar" style="margin-bottom:10px">
+        <button class="fbtn active" onclick="filterInjuries('all',this)">All</button>
+        <button class="fbtn" onclick="filterInjuries('out',this)">Out</button>
+        <button class="fbtn" onclick="filterInjuries('questionable',this)">Questionable</button>
+        <button class="fbtn" onclick="filterInjuries('probable',this)">Probable</button>
+      </div>
+      <div class="injury-search-row">
+        <input type="text" id="injury-search" class="props-search-input" placeholder="🔍 Search player or team..." oninput="searchInjuries(this.value)" />
+      </div>
+      <div id="injuries-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Injuries...</div><div class="lb-w"><div class="lb"></div></div></div></div>
+    </div>
+
+    <!-- STATS TAB -->
+    <div id="tab-stats" class="tab-content">
+      <div class="sec-title">🔍 BeepBopStats</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">StatMuse-style game logs + AI analysis. Try "LeBron last 10" or "Giannis vs Mavs"</p>
+      <div class="stats-suggestions" id="stats-suggestions" style="margin-bottom:12px"></div>
+      <div id="stats-chat" class="stats-chat">
+        <div id="stats-empty" class="stats-empty">
+          <div style="font-size:36px;margin-bottom:10px">🤖</div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:20px;color:var(--red);letter-spacing:1px;margin-bottom:6px">BeepBopStats</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.7">Ask me anything about the NBA.<br>Stats · Game Logs · Matchups · Props</div>
         </div>
       </div>
+      <div class="stats-input-row">
+        <input type="text" id="stats-input" class="stats-input" placeholder='LeBron last 10, Giannis vs Mavs, Best props tonight...' />
+        <button class="stats-btn" onclick="window.searchStats()">Ask 🤖</button>
+      </div>
+      <div style="text-align:right;margin-top:6px"><button onclick="window.clearChat()" style="background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer">Clear chat</button></div>
+    </div>
 
-      <div class="book-legend">
-        <div class="book-legend-title">📚 BOOKS TRACKED</div>
-        <div class="book-grid">
-          <div class="book-chip dk">DraftKings</div>
-          <div class="book-chip fd">FanDuel</div>
-          <div class="book-chip mgm">BetMGM</div>
-          <div class="book-chip czr">Caesars</div>
-          <div class="book-chip pp">PrizePicks</div>
-          <div class="book-chip reb">Rebet</div>
+    <!-- KRYPTONITE TAB -->
+    <div id="tab-kryptonite" class="tab-content">
+      <div class="sec-title">☠️ BeepBop's Kryptonite</div>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Every team's defensive weakness — which positions score, rebound, and assist the most against them.</p>
+      <div id="kryptonite-content">
+        <div class="loader-box"><div class="sp">☠️</div><div class="lt">Loading Kryptonite Data...</div><div class="lb-w"><div class="lb"></div></div></div>
+      </div>
+    </div>
+
+    <!-- LOUNGE TAB -->
+    <div id="tab-lounge" class="tab-content">
+      <div id="break-lounge-canvas"></div>
+    </div>
+
+  </div><!-- /left-content -->
+
+  <!-- DESKTOP SLIP PANEL -->
+  <div class="slip-panel">
+    <div class="slip-box">
+      <div class="slip-head" onclick="toggleSlipPanel()" style="cursor:pointer">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="slip-title">🤖 Pick Slip</div>
+          <span id="slip-count-badge" class="slip-badge" style="display:none">0</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="slip-sub" id="slip-sub-text">Add props → combined probability</div>
+          <span id="slip-toggle-icon" style="font-size:12px;color:var(--muted);transition:transform .3s">▼</span>
+        </div>
+      </div>
+      <div id="slip-body-collapsible">
+        <div style="padding:10px">
+          <div id="slip-empty" style="text-align:center;padding:20px 8px;color:var(--muted);font-size:12px">
+            <span style="font-size:28px;display:block;margin-bottom:8px;opacity:.3">🕸️</span>
+            No picks yet!<br>Go to <strong>Props</strong> →<br>tap <em>+ Add to Slip</em>
+          </div>
+          <div id="slip-list" style="display:none"></div>
+        </div>
+        <div id="slip-calc" style="display:none;padding:12px 14px;background:rgba(0,0,0,.2);border-top:1px solid rgba(34,197,94,.15)">
+          <div id="slip-warn" class="slip-warn">⚠️ Same-game picks — correlation risk.</div>
+          <div class="slip-prob-row">
+            <span class="slip-prob-lbl">Combined Probability</span>
+            <span class="slip-prob-val" id="slip-pct">--%</span>
+          </div>
+          <div class="slip-bar"><div class="slip-bar-fill" id="slip-bar" style="width:0%"></div></div>
+          <div class="slip-tier" id="slip-tier">--</div>
+          <div class="slip-payout">
+            <div class="slip-pout"><div class="slip-pout-lbl">Est. DK Payout</div><div class="slip-pout-val" id="slip-dk">--</div></div>
+            <div class="slip-pout"><div class="slip-pout-lbl">PP Type</div><div class="slip-pout-val" id="slip-pp">--</div></div>
+          </div>
+          <div class="slip-formula" id="slip-formula">--</div>
+          <button class="slip-ai-btn" onclick="analyzeSlip('')">🤖 AI Analyze Slip</button>
+          <div id="slip-ai" style="display:none;margin-top:8px;padding:8px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);border-radius:7px;font-size:11px;color:var(--txt);line-height:1.7;overflow-y:auto;max-height:160px"></div>
+          <button class="btn-clear" onclick="clearSlip('')">✕ Clear Slip</button>
         </div>
       </div>
     </div>
 
-  </div>
+    <div class="tip-card">
+      <div class="tip-title">🤖 SPIDER-SENSE TIPS</div>
+      <div class="tip-body">
+        • <strong>Alt Lines tab</strong> = best number across 6 books<br>
+        • <strong>Board refreshes every 15 min</strong> during games<br>
+        • <strong>2-leg slip:</strong> aim for 60%+ combined<br>
+        • <strong>3-leg slip:</strong> all Elite ≈ 60%<br>
+        • <strong>Same-game picks</strong> = correlation risk<br>
+        • Check <strong>Injuries</strong> before tip-off
+      </div>
+    </div>
+
+    <div class="book-legend">
+      <div class="book-legend-title">📚 BOOKS TRACKED</div>
+      <div class="book-grid">
+        <div class="book-chip dk">DraftKings</div>
+        <div class="book-chip fd">FanDuel</div>
+        <div class="book-chip mgm">BetMGM</div>
+        <div class="book-chip czr">Caesars</div>
+        <div class="book-chip pp">PrizePicks</div>
+        <div class="book-chip reb">Rebet</div>
+      </div>
+    </div>
+  </div><!-- /slip-panel -->
+
+</div><!-- /main-layout -->
+
+<!-- SHOT MAP OVERLAY -->
+<div id="shot-map-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;overflow-y:auto" onclick="if(event.target===this)closeShotMap()">
+  <div id="shot-map-panel" style="max-width:680px;margin:40px auto;padding:0 16px"></div>
 </div>
 
 <footer>
@@ -338,82 +292,10 @@
 
 <script src="/js/app.js"></script>
 <script src="/js/stats.js"></script>
-
-      <div id="tab-kryptonite" class="tab-content">
-        <div class="sec-title">☠️ BeepBop's Kryptonite</div>
-        <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Every team's defensive weakness — which positions score, rebound, and assist the most against them. Your cheat sheet.</p>
-        <div id="kryptonite-content">
-          <div class="loader-box"><div class="sp">🤖</div><div class="lt">Analyzing weaknesses...</div></div>
-        </div>
-      </div>
-
-      <div id="tab-lounge" class="tab-content">
-        <div id="break-lounge-canvas"></div>
-      </div>
-
-  <!-- SHOT MAP OVERLAY -->
-  <div id="shot-overlay" class="shot-overlay"></div>
-
-  <!-- SHOT MAP SLIDE PANEL -->
-  <div id="shot-panel" class="shot-panel">
-    <div class="shot-panel-inner">
-      <!-- Header -->
-      <div class="shot-panel-head">
-        <div class="shot-player-info">
-          <img id="shot-player-img" src="" onerror="this.style.display='none'" class="shot-player-img"/>
-          <div>
-            <div id="shot-player-name" class="shot-player-name"></div>
-            <div id="shot-player-sub" class="shot-player-sub"></div>
-          </div>
-        </div>
-        <button class="shot-close" onclick="closeShotMap()">✕</button>
-      </div>
-
-      <!-- Tabs -->
-      <div class="shot-tabs">
-        <button class="shot-tab active" data-view="season"    onclick="switchShotView('season')">Season</button>
-        <button class="shot-tab"        data-view="last5"     onclick="switchShotView('last5')">Last 5</button>
-        <button class="shot-tab"        data-view="last10"    onclick="switchShotView('last10')">Last 10</button>
-        <button class="shot-tab"        data-view="opponent"  onclick="switchShotView('opponent')">vs Opp</button>
-        <button class="shot-tab"        data-view="position"  onclick="switchShotView('position')">Position</button>
-      </div>
-
-      <!-- Stats bar -->
-      <div id="shot-stats" class="shot-stats"></div>
-
-      <!-- Court canvas -->
-      <div id="shot-canvas" class="shot-canvas">
-        <div class="shot-loading"><div class="shot-spinner"></div><div>Loading...</div></div>
-
-    </div>
-
-      <!-- Legend note -->
-      <div class="shot-legend">
-        <span class="shot-made-dot"></span> Made &nbsp;
-        <span class="shot-miss-dot"></span> Missed &nbsp;·&nbsp;
-        Tap anywhere outside to close
-      </div>
-    </div>
-  </div>
-  <script src="/js/shotmap.js"></script>
-  <!-- BOTTOM SLIP BAR — shows on props tab -->
-  <div id="bottom-slip-bar" class="bottom-slip-bar">
-    <div class="bsb-left">
-      <span class="bsb-count" id="bottom-slip-count">0 picks</span>
-      <span class="bsb-prob" id="bottom-slip-prob">--%</span>
-    </div>
-    <div class="bsb-mid">
-      <div id="bottom-slip-picks" class="bsb-picks"></div>
-    </div>
-    <div class="bsb-right">
-      <button class="bsb-analyze" onclick="analyzeSlip('')">🤖 Analyze</button>
-      <button class="bsb-clear" onclick="clearSlip('')">✕ Clear</button>
-    </div>
-  </div>
-
-  <script src="/js/beepbop.js"></script>
-  <script src="/js/kryptonite.js"></script>
-  <script src="/js/lounge.js"></script>
+<script src="/js/shotmap.js"></script>
+<script src="/js/beepbop.js"></script>
+<script src="/js/kryptonite.js"></script>
+<script src="/js/lounge.js"></script>
 
 </body>
 </html>

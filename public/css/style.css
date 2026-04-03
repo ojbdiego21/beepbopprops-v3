@@ -1253,3 +1253,37 @@ body.props-tab-active { padding-bottom:70px; }
   border-color:var(--red);
   color:var(--txt);
 }
+
+/* ── STATMUSE GAME LOG TABLES ── */
+.sm-card{background:var(--surf2);border:1px solid var(--bord);border-radius:12px;overflow:hidden;margin-bottom:12px;}
+.sm-header{padding:12px 14px 8px;border-bottom:1px solid var(--bord);}
+.sm-player-name{font-family:'Bebas Neue',cursive;font-size:18px;color:var(--txt);letter-spacing:1px;}
+.sm-subtitle{font-size:10px;color:var(--muted);margin-top:2px;}
+.sm-avgs{display:flex;gap:0;border-bottom:1px solid var(--bord);}
+.sm-avg-item{flex:1;padding:10px 4px;text-align:center;border-right:1px solid var(--bord);}
+.sm-avg-item:last-child{border-right:none;}
+.sm-avg-val{font-size:15px;font-weight:700;color:var(--txt);}
+.sm-avg-lbl{font-size:8px;color:var(--muted);font-weight:600;letter-spacing:.5px;margin-top:2px;}
+.sm-table-wrap{overflow-x:auto;}
+.sm-table{width:100%;border-collapse:collapse;font-size:11px;}
+.sm-table thead th{padding:6px 8px;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.5px;text-align:center;border-bottom:1px solid var(--bord);white-space:nowrap;}
+.sm-table thead th:first-child{text-align:left;}
+.sm-table td{padding:5px 8px;text-align:center;color:var(--txt);border-bottom:1px solid rgba(255,255,255,.04);}
+.sm-table .sm-even{background:rgba(255,255,255,.015);}
+.sm-date{text-align:left!important;color:var(--muted);font-size:9px;white-space:nowrap;}
+.sm-matchup{text-align:left!important;font-size:9px;white-space:nowrap;}
+.sm-win{color:#22c55e;font-weight:700;}
+.sm-loss{color:var(--red);font-weight:700;}
+.sm-pts{font-weight:700;color:var(--txt);}
+.sm-hi{font-weight:700;color:#FFD700!important;}
+.sm-stat{color:var(--txt);}
+.sm-tov{color:var(--red);}
+.sm-small{font-size:9px;color:var(--muted);}
+.sm-pm-pos{color:#22c55e;font-weight:600;}
+.sm-pm-neg{color:var(--red);font-weight:600;}
+.sm-api-note{padding:12px 14px;font-size:11px;color:var(--muted);background:var(--surf2);border-radius:8px;margin-bottom:8px;}
+.sm-empty{padding:20px;text-align:center;color:var(--muted);font-size:12px;}
+.stats-result-wrap{display:flex;flex-direction:column;gap:8px;}
+.stats-ai-bubble{background:rgba(229,34,34,.06);border:1px solid rgba(229,34,34,.15);border-radius:10px;padding:10px 12px;}
+.stats-ai-label{font-size:9px;font-weight:700;color:var(--red);letter-spacing:.5px;margin-bottom:4px;}
+.stats-ai-text{font-size:12px;color:var(--txt);line-height:1.7;}
