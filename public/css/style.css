@@ -979,3 +979,63 @@ body::before {
 .logo-bb-face { display:flex;align-items:center;flex-shrink:0; }
 .logo-text { font-family:'Bebas Neue',cursive;font-size:22px;letter-spacing:1px;color:var(--txt); }
 .logo-sub { color:var(--red); }
+
+/* ── SLIP PANEL COLLAPSIBLE ── */
+.slip-head {
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  padding:12px 14px !important;
+  border-bottom:1px solid var(--bord);
+  user-select:none;
+  transition:background .2s;
+}
+.slip-head:hover { background:rgba(255,255,255,.03); }
+
+#slip-body-collapsible {
+  transition:none;
+}
+
+.slip-badge {
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:18px;height:18px;padding:0 5px;
+  background:var(--red);color:#fff;
+  border-radius:9px;font-size:10px;font-weight:700;
+}
+
+#slip-toggle-icon {
+  display:inline-block;
+  transition:transform .3s ease;
+  color:var(--muted);
+  font-size:12px;
+}
+
+/* ── KRYPTONITE FULL FIX ── */
+/* The slip panel is position:sticky on desktop — kryptonite tab is in left-content */
+/* They don't overlap by design but if slip-panel z-index is wrong it can cover things */
+.slip-panel {
+  position:sticky;
+  top:115px;
+  align-self:start;
+  z-index:10; /* below overlays but above nothing */
+}
+
+#tab-kryptonite {
+  position:relative;
+  z-index:1;
+  width:100%;
+}
+
+/* Make kryptonite grid full width and scrollable */
+#tab-kryptonite .kryp-grid {
+  max-height:none;
+  overflow-y:visible;
+}
+
+/* On desktop the main-layout is a 2-col grid: left-content + slip-panel */
+/* Kryptonite is inside left-content so it can never be covered by slip-panel */
+/* The only issue was CSS — now fixed with proper z-index layering */
+
+@media(max-width:960px) {
+  .slip-panel { display:none !important; }
+}

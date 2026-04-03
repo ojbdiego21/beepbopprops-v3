@@ -718,3 +718,32 @@ function filterInjuryGame(gameKey, btn) {
     r.style.display = (gameKey === 'all' || game.includes(gameKey)) ? '' : 'none';
   });
 }
+
+// ── SLIP PANEL TOGGLE ──
+var slipPanelOpen = true;
+
+window.toggleSlipPanel = function() {
+  slipPanelOpen = !slipPanelOpen;
+  var body = document.getElementById('slip-body-collapsible');
+  var icon = document.getElementById('slip-toggle-icon');
+  var panel = document.querySelector('.slip-panel');
+  if (body) {
+    body.style.display = slipPanelOpen ? '' : 'none';
+    body.style.overflow = 'hidden';
+  }
+  if (icon) icon.style.transform = slipPanelOpen ? '' : 'rotate(-90deg)';
+  if (panel) panel.style.minWidth = slipPanelOpen ? '' : 'auto';
+};
+
+// Update slip badge count
+function updateSlipBadge() {
+  var badge = document.getElementById('slip-count-badge');
+  var count = (window.slipPicks || []).length;
+  if (!badge) return;
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
