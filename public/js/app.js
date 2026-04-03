@@ -140,7 +140,7 @@ function renderProps(props) {
 
   document.getElementById('props-content').innerHTML = html;
   // Build game filter buttons
-  if (window.allProps && window.allProps.length) buildPropsGameFilter(window.allProps);
+  buildPropsGameFilter(props);
 }
 
 function buildPropCard(p) {
@@ -391,6 +391,14 @@ function addPick(btn, label, name, game, conf, type, nbaId, pickId) {
   var pid = pickId || (nbaId+'_'+type);
   if (slipPicks.find(function(p){ return p.pickId===pid; })) { showToast('Already in slip!'); return; }
   slipPicks.push({ pickId:pid, label:label, name:name, game:game, conf:parseInt(conf,10)||60, type:type, nbaId:nbaId });
+  // Update mini badge
+  var _activeTab = document.querySelector('.tab-content.active');
+  var _miniBtn = document.getElementById('mini-slip-btn');
+  if (_activeTab && _activeTab.id !== 'tab-props' && _miniBtn) {
+    _miniBtn.style.display = 'flex';
+    var _badge = document.getElementById('mini-slip-count');
+    if (_badge) _badge.textContent = slipPicks.length;
+  }
   btn.dataset.pickId = pid;
   btn.classList.add('added');
   btn.textContent = '✓ Added';
@@ -543,18 +551,33 @@ function showTab(id,el){
   event.preventDefault();
   document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('nav a').forEach(function(a){a.classList.remove('active');});
-  document.getElementById(id).classList.add('active'); el.classList.add('active');
-  // Show slip panel ONLY on props tab, hide on all others
-  var slip = document.querySelector('.slip-panel');
+  if (!id || !document.getElementById(id)) return;
+  document.getElementById(id).classList.add('active');
+  if (el) el.classList.add('active');
+
   var layout = document.querySelector('.main-layout');
-  if (slip && layout) {
-    if (id === 'tab-props') {
-      slip.style.display = '';
-      layout.style.gridTemplateColumns = '';
-    } else {
-      slip.style.display = 'none';
-      layout.style.gridTemplateColumns = '1fr';
+  var slip = document.querySelector('.slip-panel');
+  var miniSlip = document.getElementById('mini-slip-btn');
+
+  if (id === 'tab-props') {
+    // Props tab: full width (slip shown at BOTTOM as sticky bar)
+    if (layout) layout.style.gridTemplateColumns = '1fr';
+    if (slip) slip.style.display = 'none'; // hide side panel, bottom bar used instead
+    if (miniSlip) miniSlip.style.display = 'none';
+    document.body.classList.add('props-tab-active');
+    // Rebuild game filter
+    if (allProps && allProps.length) buildPropsGameFilter(allProps);
+  } else {
+    if (layout) layout.style.gridTemplateColumns = '1fr';
+    if (slip) slip.style.display = 'none';
+    // Show mini slip in header if picks exist
+    var count = slipPicks ? slipPicks.length : 0;
+    if (miniSlip) {
+      miniSlip.style.display = count > 0 ? 'flex' : 'none';
+      var badge = document.getElementById('mini-slip-count');
+      if (badge) badge.textContent = count;
     }
+    document.body.classList.remove('props-tab-active');
   }
 }
 
@@ -594,8 +617,9 @@ function applyPropsFilter() {
     // Game filter
     var gameMatch = true;
     if (typeof _propGameFilter !== 'undefined' && _propGameFilter !== 'all') {
-      var ct = (c.dataset.team||'').toLowerCase();
-      gameMatch = _propGameFilter.includes(ct.split(' ')[0]) || _propGameFilter.includes(ct.split(' ')[1]||'@@');
+      var ct = (c.dataset.team||'').toLowerCase().replace(/\s+/g,'');
+      // key is like "min_okc" — check if card's team abbrev is in the key
+      gameMatch = _propGameFilter.split('_').some(function(part){ return ct.startsWith(part) || part.startsWith(ct.substring(0,2)); });
     }
     var show = typeMatch && searchMatch && gameMatch;
     c.style.display = show ? '' : 'none';
@@ -779,14 +803,16 @@ window.toggleSlipPanel = function() {
 
 // Update slip badge count
 function updateSlipBadge() {
-  var badge = document.getElementById('slip-count-badge');
   var count = (window.slipPicks || []).length;
-  if (!badge) return;
-  if (count > 0) {
-    badge.textContent = count;
-    badge.style.display = 'inline-flex';
-  } else {
-    badge.style.display = 'none';
+  var badge = document.getElementById('slip-count-badge');
+  if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
+  var miniCount = document.getElementById('mini-slip-count');
+  if (miniCount) miniCount.textContent = count;
+  // Show mini button on non-props tabs when there are picks
+  var miniBtn = document.getElementById('mini-slip-btn');
+  var activeTab = document.querySelector('.tab-content.active');
+  if (miniBtn && activeTab && activeTab.id !== 'tab-props') {
+    miniBtn.style.display = count > 0 ? 'flex' : 'none';
   }
 }
 
@@ -803,20 +829,54 @@ function filterPropsByGame(gameKey, btn) {
 function buildPropsGameFilter(props) {
   var row = document.getElementById('props-game-filter-row');
   if (!row) return;
-  var games = {};
-  props.forEach(function(p) {
-    if (p.team && p.opponent) {
-      var away = p.team; var home = p.opponent;
-      var key = away.toLowerCase() + '_vs_' + home.toLowerCase();
-      games[key] = away + ' vs ' + home;
-    }
-  });
-  var btns = '<button class="pgame-btn active" data-game="all" onclick="filterPropsByGame(this.dataset.game,this)">🏀 All Games</button>';
+  // Use live games data for logos + proper matchup names
+  var liveGames = window._liveGames || [];
   var seen = {};
-  Object.entries(games).forEach(function(e) {
-    var key = e[0]; var label = e[1];
+  var btns = '<button class="pgame-btn pgame-all active" data-game="all" onclick="filterPropsByGame(this.dataset.game,this)"><span class="pgame-icon">🏀</span><span class="pgame-label">All Games</span></button>';
+  // First try to build from real game data with logos
+  liveGames.forEach(function(g) {
+    var key = (g.awayTeam + '_' + g.homeTeam).toLowerCase();
     if (seen[key]) return; seen[key] = 1;
-    btns += '<button class="pgame-btn" data-game="' + key + '" onclick="filterPropsByGame(this.dataset.game,this)">' + label + '</button>';
+    var awayLogo = 'https://cdn.nba.com/logos/nba/' + (NBA_TEAM_IDS[g.awayTeam]||'') + '/global/L/logo.svg';
+    var homeLogo = 'https://cdn.nba.com/logos/nba/' + (NBA_TEAM_IDS[g.homeTeam]||'') + '/global/L/logo.svg';
+    btns += '<button class="pgame-btn" data-game="' + key + '" onclick="filterPropsByGame(this.dataset.game,this)">'
+      + '<img src="' + awayLogo + '" class="pgame-logo">'
+      + '<span class="pgame-vs">' + g.awayTeam + ' vs ' + g.homeTeam + '</span>'
+      + '<img src="' + homeLogo + '" class="pgame-logo">'
+    + '</button>';
   });
+  // Fallback: build from props data if no game data
+  if (liveGames.length === 0) {
+    var pgames = {};
+    props.forEach(function(p) {
+      if (p.team && p.opponent) {
+        var key = (p.team + '_' + p.opponent).toLowerCase();
+        if (!pgames[key]) pgames[key] = {away:p.team, home:p.opponent};
+      }
+    });
+    Object.entries(pgames).forEach(function(e) {
+      var key = e[0]; var g = e[1];
+      if (seen[key]) return; seen[key] = 1;
+      var awayLogo = 'https://cdn.nba.com/logos/nba/' + (NBA_TEAM_IDS[g.away]||'') + '/global/L/logo.svg';
+      var homeLogo = 'https://cdn.nba.com/logos/nba/' + (NBA_TEAM_IDS[g.home]||'') + '/global/L/logo.svg';
+      btns += '<button class="pgame-btn" data-game="' + key + '" onclick="filterPropsByGame(this.dataset.game,this)">'
+        + '<img src="' + awayLogo + '" class="pgame-logo">'
+        + '<span class="pgame-vs">' + g.away + ' vs ' + g.home + '</span>'
+        + '<img src="' + homeLogo + '" class="pgame-logo">'
+      + '</button>';
+    });
+  }
   row.innerHTML = btns;
 }
+
+// NBA team ID lookup for logos
+var NBA_TEAM_IDS = {
+  'ATL':'1610612737','BOS':'1610612738','BKN':'1610612751','CHA':'1610612766',
+  'CHI':'1610612741','CLE':'1610612739','DAL':'1610612742','DEN':'1610612743',
+  'DET':'1610612765','GSW':'1610612744','HOU':'1610612745','IND':'1610612754',
+  'LAC':'1610612746','LAL':'1610612747','MEM':'1610612763','MIA':'1610612748',
+  'MIL':'1610612749','MIN':'1610612750','NOP':'1610612740','NYK':'1610612752',
+  'OKC':'1610612760','ORL':'1610612753','PHI':'1610612755','PHX':'1610612756',
+  'POR':'1610612757','SAC':'1610612758','SAS':'1610612759','TOR':'1610612761',
+  'UTA':'1610612762','WAS':'1610612764',
+};

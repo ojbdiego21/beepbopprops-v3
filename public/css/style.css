@@ -1000,3 +1000,256 @@ body::before {
   background:var(--red);color:#fff;
   border-color:var(--red);
 }
+
+/* ── MINI SLIP BUTTON IN HEADER ── */
+.mini-slip-btn {
+  display:none;align-items:center;gap:5px;
+  padding:5px 12px;border-radius:20px;
+  background:linear-gradient(135deg,var(--red),#9B0000);
+  border:none;color:#fff;font-size:11px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+.mini-slip-btn:hover { opacity:.85; transform:scale(1.03); }
+
+/* ── SLIP PANEL AT BOTTOM OF PROPS ── */
+.props-slip-bottom {
+  margin-top:20px;
+  border-top:1px solid var(--bord);
+  padding-top:14px;
+}
+.props-slip-bottom .slip-panel {
+  position:static !important;
+  max-height:none;
+  width:100%;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+@media(max-width:700px){
+  .props-slip-bottom .slip-panel { grid-template-columns:1fr; }
+}
+
+/* ── GAME FILTER TEAM LOGOS ── */
+.props-game-row {
+  display:flex;gap:8px;flex-wrap:nowrap;
+  padding:12px 0 8px;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.props-game-row::-webkit-scrollbar{display:none;}
+.pgame-btn {
+  display:flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:24px;
+  background:var(--surf2);border:1.5px solid var(--bord);
+  color:var(--muted);cursor:pointer;transition:all .2s;
+  white-space:nowrap;flex-shrink:0;font-size:11px;font-weight:700;
+}
+.pgame-btn.active,.pgame-btn:hover {
+  background:rgba(229,34,34,.12);
+  border-color:var(--red);color:var(--txt);
+}
+.pgame-logo {
+  width:22px;height:22px;object-fit:contain;border-radius:3px;
+}
+.pgame-all { font-size:13px; }
+.pgame-label { font-size:11px;font-weight:700; }
+
+/* ── SANDY'S DOME LOUNGE BACKGROUND ── */
+.lounge-bg {
+  background:
+    /* Sky gradient */
+    radial-gradient(ellipse at 50% 0%, #87CEEB 0%, #4a9fcc 40%, #1a5f7a 100%) !important;
+}
+/* Sandy's dome overlay */
+.lounge-bg::before {
+  content:'';
+  position:absolute;inset:0;
+  background:
+    /* Dome glass effect */
+    radial-gradient(ellipse at 50% 110%, rgba(135,206,235,0.15) 0%, transparent 60%),
+    /* Sandy seafloor */
+    linear-gradient(to top, #c8a96e 0%, #dfc08a 8%, transparent 20%);
+  border-radius:12px;
+  pointer-events:none;
+}
+/* Dome border arc */
+.lounge-bg::after {
+  content:'';
+  position:absolute;
+  top:5%;left:5%;right:5%;bottom:0;
+  border:3px solid rgba(135,206,235,0.35);
+  border-bottom:none;
+  border-radius:50% 50% 0 0;
+  pointer-events:none;
+}
+/* Underwater bubbles */
+@keyframes bubble-rise{
+  0%{transform:translateY(0) scale(1);opacity:.4}
+  100%{transform:translateY(-200px) scale(1.5);opacity:0}
+}
+
+/* Music player move to TOP so it doesn't cover BeepBop */
+.lounge-player {
+  bottom:auto !important;
+  top:14px !important;
+  right:16px !important;
+  left:auto !important;
+  transform:none !important;
+  min-width:220px !important;
+}
+
+/* ── BOTTOM SLIP BAR ── */
+.bottom-slip-bar {
+  position:fixed;bottom:0;left:0;right:0;
+  background:#0a0a14;border-top:2px solid var(--red);
+  padding:10px 16px;z-index:500;
+  display:flex;align-items:center;gap:12px;
+  transform:translateY(100%);transition:transform .3s ease;
+  min-height:58px;
+}
+.bottom-slip-bar.has-picks { transform:translateY(0); }
+/* Only visible on props tab */
+body:not(.props-tab-active) .bottom-slip-bar { display:none !important; }
+.bsb-left { display:flex;flex-direction:column;align-items:center;min-width:52px; }
+.bsb-count { font-size:10px;color:var(--muted); }
+.bsb-prob { font-family:'Bebas Neue',cursive;font-size:22px;color:var(--gold);line-height:1; }
+.bsb-mid { flex:1;overflow:hidden; }
+.bsb-picks { display:flex;gap:6px;align-items:center;overflow-x:auto; }
+.bsb-picks::-webkit-scrollbar { display:none; }
+.bsb-pick { display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0; }
+.bsb-img { width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--bord); }
+.bsb-pick span { font-size:8px;color:var(--muted);white-space:nowrap; }
+.bsb-right { display:flex;gap:6px;flex-shrink:0; }
+.bsb-analyze, .bsb-clear {
+  padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;
+  cursor:pointer;white-space:nowrap;border:1px solid var(--bord);
+}
+.bsb-analyze { background:rgba(255,215,0,.1);color:var(--gold);border-color:rgba(255,215,0,.3); }
+.bsb-analyze:hover { background:rgba(255,215,0,.2); }
+.bsb-clear { background:rgba(229,34,34,.1);color:var(--red); }
+.bsb-clear:hover { background:rgba(229,34,34,.2); }
+/* Add bottom padding on props tab so bar doesn't cover last prop */
+body.props-tab-active { padding-bottom:70px; }
+
+/* ── MINI SLIP HEADER BUTTON ── */
+.mini-slip-btn {
+  display:none;align-items:center;gap:6px;
+  padding:6px 12px;border-radius:20px;
+  background:rgba(229,34,34,.15);border:1px solid var(--red);
+  color:var(--txt);font-size:11px;font-weight:600;cursor:pointer;
+  transition:all .2s;
+}
+.mini-slip-btn:hover { background:var(--red);color:#fff; }
+.mini-slip-btn .slip-badge { background:var(--red);color:#fff; }
+
+/* ── GAME FILTER LOGOS ── */
+.pgame-btn { min-height:44px; }
+.pgame-logo { width:22px;height:22px;object-fit:contain;flex-shrink:0; }
+.pgame-vs { font-size:11px;font-weight:700;white-space:nowrap; }
+.pgame-all { gap:6px; }
+.pgame-icon { font-size:16px; }
+.pgame-label { font-size:11px;font-weight:700; }
+
+/* ── LOUNGE PLAYER (below scene, not overlapping BeepBop) ── */
+.lounge-player {
+  position:relative !important;
+  bottom:auto !important;left:auto !important;
+  transform:none !important;
+  margin:12px auto 0;
+  max-width:360px;
+  display:flex;
+}
+
+/* ── SANDY'S DOME (lounge background) ── */
+.lounge-bg {
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 100%, #c2a35a 0%, #8b6914 35%, transparent 55%),
+    radial-gradient(ellipse 90% 55% at 50% 98%, #a07830 0%, transparent 50%),
+    linear-gradient(to bottom, #1a0a3e 0%, #0d1a3a 35%, #1a3a5c 65%, #4a7a9b 85%, #6699aa 95%, #7aabb8 100%) !important;
+  overflow:hidden;
+}
+/* Sandy's dome bubble overlay */
+.lounge-bg::before {
+  content:'';
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 85% 80% at 50% 60%,
+    rgba(100,180,220,0.08) 0%,
+    rgba(100,180,220,0.04) 40%,
+    transparent 70%);
+  border:none;pointer-events:none;z-index:1;
+}
+/* Dome edge glow */
+.lounge-bg::after {
+  content:'';
+  position:absolute;
+  left:5%;right:5%;top:15%;bottom:0;
+  border-radius:50% 50% 0 0 / 60% 60% 0 0;
+  border:2px solid rgba(150,220,255,0.2);
+  pointer-events:none;z-index:1;
+  box-shadow:0 0 30px rgba(100,200,255,0.08) inset;
+}
+/* Sandy's sandy floor */
+.lounge-floor {
+  position:absolute;bottom:0;left:0;right:0;height:70px;
+  background:linear-gradient(to bottom, #c2a35a 0%, #8b6914 50%, #5c4010 100%);
+  border-top:2px solid rgba(255,200,100,0.4);
+}
+/* Stars in the sky part of dome */
+.lounge-bg .l-blob-1 { background:rgba(100,150,255,0.1); }
+.lounge-bg .l-blob-2 { background:rgba(0,100,150,0.12); }
+.lounge-bg .l-blob-3 { background:rgba(200,230,255,0.06); }
+/* Sandy's dome sign update */
+.neon-text { color:#f0c030; text-shadow:0 0 8px #f0c030,0 0 20px #f0c030; }
+.bubble-wrap{position:absolute;inset:0;pointer-events:none;z-index:3;}
+.sandy-dome-floor{
+  position:absolute;bottom:0;left:0;right:0;height:80px;
+  background:linear-gradient(to top,#c8a96e,#dfc08a 40%,transparent);
+  border-radius:0 0 12px 12px;z-index:2;pointer-events:none;
+}
+
+/* ── MINI SLIP BADGE (header, non-props tabs) ── */
+.mini-slip-btn {
+  display:none;
+  align-items:center;gap:6px;
+  padding:6px 12px;border-radius:20px;
+  background:linear-gradient(135deg,var(--red),#7a0000);
+  border:none;color:#fff;font-size:11px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+  box-shadow:0 2px 8px rgba(229,34,34,0.4);
+}
+.mini-slip-btn:hover { transform:scale(1.05); }
+.mini-slip-btn .slip-badge {
+  background:#FFD700;color:#000;
+  min-width:18px;height:18px;padding:0 4px;
+  border-radius:9px;font-size:10px;font-weight:900;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+
+/* ── GAME FILTER TABS with logos ── */
+.props-game-row {
+  display:flex;gap:8px;
+  padding:12px 0 8px;
+  border-bottom:1px solid var(--bord);
+  margin-bottom:12px;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+.props-game-row::-webkit-scrollbar{display:none;}
+.pgame-btn {
+  display:flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:10px;
+  font-size:11px;font-weight:600;
+  background:var(--surf2);border:1px solid var(--bord);
+  color:var(--muted);cursor:pointer;transition:all .2s;
+  white-space:nowrap;flex-shrink:0;
+  line-height:1;
+}
+.pgame-btn.active {
+  background:rgba(229,34,34,.15);
+  border-color:var(--red);
+  color:var(--txt);
+}
+.pgame-btn:hover:not(.active) {
+  border-color:var(--red);
+  color:var(--txt);
+}
