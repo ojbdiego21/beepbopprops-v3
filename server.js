@@ -214,10 +214,13 @@ async function fetchOddsAPI() {
   const KEY = process.env.ODDS_API_KEY;
   if (!KEY) { console.log('⚠️  No ODDS_API_KEY set'); return; }
   try {
+    // 7 core markets (credit-safe) — 7 × 1 region × 4/hr × 12hr × 30days = 10,080/month
     const MARKETS = [
       'player_points','player_rebounds','player_assists',
       'player_threes','player_blocks','player_steals',
       'player_points_rebounds_assists',
+      'player_points_rebounds','player_points_assists',
+      'player_double_double','player_rebounds_assists',
     ].join(',');
 
     // Step 1: get event IDs — free, no credits used
@@ -602,7 +605,7 @@ app.post('/api/analysis/slip', async (req,res) => {
 // AI Stats Chat — Claude answers any NBA question with real data + game logs
 app.post('/api/stats/ask', async (req,res) => {
   try {
-    const { question, slipContext, gameLogContext } = req.body||{};
+    const { question, slipContext, gameLogContext, history } = req.body||{};
     if (!question) return res.status(400).json({success:false,error:'No question'});
 
     if (!process.env.ANTHROPIC_API_KEY) {
@@ -685,10 +688,14 @@ Answer the users NBA question in a helpful, conversational way. Be specific with
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 400,
       system: systemPrompt,
-      messages: [{ role: 'user', content: question
-        + (slipContext ? '\n\n[CURRENT PICK SLIP]: ' + slipContext : '')
-        + (gameLogContext ? '\n\n[REAL GAME LOG DATA]: ' + gameLogContext : '')
-      }]
+      messages: [
+        // Include conversation history for memory (last 8 turns)
+        ...(Array.isArray(history) ? history.slice(-8).filter(function(m){ return m.role && m.content; }) : []),
+        { role: 'user', content: question
+          + (slipContext ? '\n\n[CURRENT PICK SLIP]: ' + slipContext : '')
+          + (gameLogContext ? '\n\n[REAL GAME LOG DATA from NBA Stats API]: ' + gameLogContext : '')
+        }
+      ]
     }, {
       headers: {
         'x-api-key': process.env.ANTHROPIC_API_KEY,
@@ -703,10 +710,14 @@ Answer the users NBA question in a helpful, conversational way. Be specific with
     let gameLog = null;
     const PLAYER_IDS = {
       'lebron':2544,'curry':201939,'giannis':203507,'jokic':203999,'tatum':1628369,
-      'mitchell':1628378,'brunson':1628386,'booker':1626164,'kawhi':202695,'durant':201142,
+      'mitchell':1628378,'brunson':1628973,'booker':1626164,'kawhi':202695,'durant':201142,
       'lamelo':1630163,'maxey':1630178,'wembanyama':1641705,'garland':1629636,'harden':201935,
-      'reaves':1631244,'flagg':1642366,'sengun':1630578,'luka':1629029,'sga':1628983,
-      'mobley':1630596,'edwards':1630162,'trae':1629027,'davis':203076,'kuminga':1630557,
+      'reaves':1630559,'flagg':1642843,'sengun':1630578,'luka':1629029,'sga':1628983,
+      'mobley':1630596,'edwards':1630162,'trae':1629027,'davis':203076,'kuminga':1630228,
+      'banchero':1631094,'jalen johnson':1630552,'dyson':1630700,'okongwu':1630168,
+      'bane':1630217,'suggs':1630534,'franz':1630532,'chet':1631096,'wemby':1641705,
+      'ant':1630162,'dame':203081,'ja':1629630,'fox':1628368,'embiid':203954,
+      'towns':1626157,'brown':1627759,'barnes':1630567,'brunson':1628973,'herro':1629639,
     };
     const TEAM_IDS = {
       'cavs':'1610612739','cavaliers':'1610612739','lakers':'1610612747','celtics':'1610612738',

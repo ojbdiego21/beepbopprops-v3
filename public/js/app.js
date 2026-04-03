@@ -212,16 +212,19 @@ function renderAltLines(props) {
             + mkBk('pp','PrizePicks',p.ppLine,'More/Less',mainLine,p.direction)
             + mkBk('reb','Rebet',p.rebetLine,p.rebetOdds,mainLine,p.direction)
           + '</div></div>'
-        + '<div style="font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:600">ALTERNATE LINES (DraftKings)</div>'
-        + '<div class="alt-table-wrap"><table class="alt-table"><thead><tr><th>Line</th><th>Over</th><th>Under</th><th>Implied</th></tr></thead><tbody>'
+        + '<div style="font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:600">ALTERNATE LINES — Hit % + Value</div>'
+        + '<div class="alt-table-wrap"><table class="alt-table"><thead><tr><th>Line</th><th>Over</th><th>Under</th><th>Hit %</th><th>Edge</th></tr></thead><tbody>'
         + alts.map(function(a) {
             var isMain = a.line === mainLine;
-            var edge = calcEdge(a.overOdds);
+            var overImp = calcImplied(a.overOdds);
+            var underImp = calcImplied(a.underOdds);
+            var val = getValueLabel(a.overOdds);
             return '<tr class="'+(isMain?'main-line':'')+'">'
               + '<td>'+a.line+(isMain?'<span class="alt-tag main">MAIN</span>':'<span class="alt-tag">ALT</span>')+'</td>'
               + '<td class="'+(parseFloat(a.overOdds)>0?'odds-pos':'odds-neg')+'">'+a.overOdds+'</td>'
               + '<td class="'+(parseFloat(a.underOdds)>0?'odds-pos':'odds-neg')+'">'+a.underOdds+'</td>'
-              + '<td style="font-size:9px;color:var(--muted)">'+edge+'</td>'
+              + '<td><div style="display:flex;align-items:center;gap:4px"><div style="width:40px;height:5px;background:var(--bord);border-radius:3px;overflow:hidden"><div style="width:'+overImp+'%;height:100%;background:var(--gold);border-radius:3px"></div></div><span style="font-size:9px;color:var(--gold)">'+overImp+'%</span></div></td>'
+              + '<td style="font-size:9px;color:'+(val==='Value'?'#00D4AA':val==='Fair'?'var(--muted)':'var(--red)')+'">'+val+'</td>'
             + '</tr>';
           }).join('')
         + '</tbody></table></div>'
@@ -684,5 +687,34 @@ function searchInjuries(val) {
   rows.forEach(function(r) {
     var text = r.textContent.toLowerCase();
     r.style.display = text.includes(val) ? '' : 'none';
+  });
+}
+
+function calcImplied(odds) {
+  if (!odds) return 50;
+  var n = parseInt((odds+'').replace('+',''));
+  if (isNaN(n)) return 50;
+  var imp = n > 0 ? 100/(n+100) : Math.abs(n)/(Math.abs(n)+100);
+  return (imp*100).toFixed(0);
+}
+
+function getValueLabel(odds) {
+  if (!odds) return 'Fair';
+  var n = parseInt((odds+'').replace('+',''));
+  if (isNaN(n)) return 'Fair';
+  // Anything worse than -130 on a main line = vig heavy
+  if (n > 0) return 'Value';
+  if (Math.abs(n) <= 110) return 'Value';
+  if (Math.abs(n) <= 130) return 'Fair';
+  return 'Vig';
+}
+
+function filterInjuryGame(gameKey, btn) {
+  document.querySelectorAll('#injury-game-filters .fbtn').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  var rows = document.querySelectorAll('.inj-row, .injury-item, .injury-card');
+  rows.forEach(function(r) {
+    var game = (r.dataset.game||'').toLowerCase();
+    r.style.display = (gameKey === 'all' || game.includes(gameKey)) ? '' : 'none';
   });
 }

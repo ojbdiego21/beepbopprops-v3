@@ -184,14 +184,15 @@ function injectBeepBop() {
 
 // ── INJECT LOGO — face only ──
 function injectLogo() {
-  var logo = document.querySelector('.logo-bb, .logo-icon');
-  if (logo) {
-    logo.innerHTML = bbFaceStatic(52);
-    logo.style.display = 'flex';
-    logo.style.alignItems = 'center';
-  }
-  document.querySelectorAll('.logo-title, .logo-wrap, .nav-logo').forEach(function(el) {
-    el.innerHTML = el.innerHTML.replace('🤖', bbFaceStatic(36));
+  // Target our specific logo span
+  var face = document.querySelector('.logo-bb-face');
+  if (face) face.innerHTML = bbFaceStatic(38);
+
+  // Also replace any stray robot emojis in nav/header
+  document.querySelectorAll('.logo, header, .nav-logo').forEach(function(el) {
+    if (!el.querySelector('svg') && el.innerHTML.includes('🤖')) {
+      el.innerHTML = el.innerHTML.replace('🤖', bbFaceStatic(32));
+    }
   });
 }
 
