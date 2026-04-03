@@ -796,22 +796,97 @@ app.get('/api/nba/positionshots', async (req,res) => {
 // NBA Stats Proxy — bypasses CORS for browser requests
 app.get('/api/nba/gamelog', async (req,res) => {
   try {
-    const { playerId, oppTeamId } = req.query;
+    const { playerId } = req.query;
     if (!playerId) return res.status(400).json({success:false,error:'No playerId'});
+
+    // ESPN API — reliable, no CORS blocking, same data
+    // ESPN uses their own player IDs — we map from NBA ID via lookup
+    // Try ESPN athlete game log endpoint
+    const url = `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${playerId}/gamelog?season=2026`;
+    const { data } = await axios.get(url, {
+      timeout:10000,
+      headers:{ 'User-Agent':'Mozilla/5.0 (compatible)', 'Accept':'application/json' }
+    });
+
+    // ESPN gamelog format
+    const events = data.events || {};
+    const categories = (data.labels || []);
+    const rows = [];
+
+    Object.entries(events).forEach(([eventId, ev]) => {
+      const stats = ev.stats || [];
+      const atHome = ev.home === true;
+      const opp = ev.opponent?.abbreviation || '';
+      const result = ev.gameResult || '';
+      const date = (ev.gameDate || '').split('T')[0];
+      const matchup = atHome ? 'vs ' + opp : '@ ' + opp;
+
+      // Map ESPN stat order: PTS REB AST STL BLK TO FGM FGA FG3M FG3A FTM FTA MIN +/-
+      const s = stats.map(Number);
+      rows.push({
+        date, matchup,
+        result: result === 'W' ? 'W' : result === 'L' ? 'L' : result,
+        pts:  s[0]||0, reb:  s[1]||0, ast:  s[2]||0,
+        stl:  s[3]||0, blk:  s[4]||0, tov:  s[5]||0,
+        fgm:  s[6]||0, fga:  s[7]||0,
+        fg3m: s[8]||0, fg3a: s[9]||0,
+        ftm:  s[10]||0,fta:  s[11]||0,
+        min:  s[12]||0,plusMinus: s[13]||0,
+      });
+    });
+
+    // Sort by date desc (most recent first)
+    rows.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+    if (rows.length === 0) {
+      // Fallback: try NBA Stats API with full headers
+      return tryNBAStats(playerId, res);
+    }
+
+    res.json({success:true, source:'espn', rows});
+  } catch(e) {
+    // Fallback to NBA Stats API
+    tryNBAStats(req.query.playerId, res);
+  }
+});
+
+async function tryNBAStats(playerId, res) {
+  try {
     const params = new URLSearchParams({
       PlayerID: playerId, Season: '2025-26',
       SeasonType: 'Regular Season', PerMode: 'Totals', LeagueID: '00',
     });
-    if (oppTeamId) params.append('OppTeamID', oppTeamId);
     const url = 'https://stats.nba.com/stats/playergamelogs?' + params.toString();
-    const { data } = await axios.get(url, { timeout:10000, headers:{
-      'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Referer':'https://www.nba.com', 'Origin':'https://www.nba.com',
-      'Accept':'application/json','x-nba-stats-origin':'stats','x-nba-stats-token':'true',
+    const { data } = await axios.get(url, { timeout:12000, headers:{
+      'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Referer':'https://www.nba.com/stats/player/'+playerId+'/traditional?PerMode=PerGame',
+      'Origin':'https://www.nba.com',
+      'Accept':'application/json, text/plain, */*',
+      'Accept-Language':'en-US,en;q=0.9',
+      'x-nba-stats-origin':'stats',
+      'x-nba-stats-token':'true',
+      'Connection':'keep-alive',
     }});
-    res.json({success:true, data});
-  } catch(e){ res.status(500).json({success:false,error:e.message}); }
-});
+    // Convert NBA Stats format to our format
+    const headers = data.resultSets[0].headers;
+    const rowSet = data.resultSets[0].rowSet;
+    const idx = k => headers.indexOf(k);
+    const rows = rowSet.map(r => ({
+      date:      (r[idx('GAME_DATE')]||'').split('T')[0],
+      matchup:   r[idx('MATCHUP')]||'',
+      result:    r[idx('WL')]||'',
+      pts:       r[idx('PTS')]||0,  reb:  r[idx('REB')]||0,  ast:  r[idx('AST')]||0,
+      stl:       r[idx('STL')]||0,  blk:  r[idx('BLK')]||0,  tov:  r[idx('TOV')]||0,
+      fgm:       r[idx('FGM')]||0,  fga:  r[idx('FGA')]||0,
+      fg3m:      r[idx('FG3M')]||0, fg3a: r[idx('FG3A')]||0,
+      ftm:       r[idx('FTM')]||0,  fta:  r[idx('FTA')]||0,
+      min:       r[idx('MIN')]||0,  plusMinus: r[idx('PLUS_MINUS')]||0,
+    }));
+    res.json({success:true, source:'nba', rows});
+  } catch(e) {
+    res.status(500).json({success:false, error:'Both ESPN and NBA Stats APIs unavailable: '+e.message});
+  }
+}
 
 app.get('/api/nba/career', async (req,res) => {
   try {

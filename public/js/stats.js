@@ -222,41 +222,39 @@ window.searchStats = async function() {
     var d = await r.json();
     removeTyping(tid);
 
-    if (!d.success || !d.data || !d.data.resultSets || !d.data.resultSets[0]) {
-      addMsg('<div class="sm-empty">NBA API returned no data for ' + cap(found.name) + '. Player may be injured/inactive this season.</div>');
+    if (!d.success) {
+      addMsg('<div class="sm-empty">Could not load game log for ' + cap(found.name) + '. API may be temporarily unavailable — try again in a moment.</div>');
       return;
     }
 
-    var headers = d.data.resultSets[0].headers;
-    var rows = d.data.resultSets[0].rowSet;
-    var idx = function(k){ return headers.indexOf(k); };
-
-    if (!rows.length) {
-      addMsg('<div class="sm-empty">No game log found for ' + cap(found.name) + ' in 2025-26.</div>');
-      return;
+    // Handle both ESPN format (d.rows) and NBA Stats format (d.data.resultSets)
+    var games = [];
+    if (d.rows && d.rows.length) {
+      // ESPN format — already parsed server-side
+      games = d.rows.slice(0, lastN);
+    } else if (d.data && d.data.resultSets && d.data.resultSets[0]) {
+      var headers = d.data.resultSets[0].headers;
+      var rowSet = d.data.resultSets[0].rowSet;
+      var idx = function(k){ return headers.indexOf(k); };
+      games = rowSet.slice(0, lastN).map(function(row) {
+        return {
+          date:      fmtDate(row[idx('GAME_DATE')]),
+          matchup:   row[idx('MATCHUP')]||'',
+          result:    row[idx('WL')]||'',
+          pts:       row[idx('PTS')]||0,  reb: row[idx('REB')]||0,  ast: row[idx('AST')]||0,
+          stl:       row[idx('STL')]||0,  blk: row[idx('BLK')]||0,  tov: row[idx('TOV')]||0,
+          fgm:       row[idx('FGM')]||0,  fga: row[idx('FGA')]||0,
+          fg3m:      row[idx('FG3M')]||0, fg3a:row[idx('FG3A')]||0,
+          ftm:       row[idx('FTM')]||0,  fta: row[idx('FTA')]||0,
+          min:       row[idx('MIN')]||0,  plusMinus: row[idx('PLUS_MINUS')]||0,
+        };
+      });
     }
 
-    var games = rows.slice(0, lastN).map(function(r) {
-      return {
-        date:      fmtDate(r[idx('GAME_DATE')]),
-        matchup:   r[idx('MATCHUP')]||'',
-        result:    r[idx('WL')]||'',
-        pts:       r[idx('PTS')]||0,
-        reb:       r[idx('REB')]||0,
-        ast:       r[idx('AST')]||0,
-        stl:       r[idx('STL')]||0,
-        blk:       r[idx('BLK')]||0,
-        tov:       r[idx('TOV')]||0,
-        min:       r[idx('MIN')]||0,
-        fgm:       r[idx('FGM')]||0,
-        fga:       r[idx('FGA')]||0,
-        fg3m:      r[idx('FG3M')]||0,
-        fg3a:      r[idx('FG3A')]||0,
-        ftm:       r[idx('FTM')]||0,
-        fta:       r[idx('FTA')]||0,
-        plusMinus: r[idx('PLUS_MINUS')]||0,
-      };
-    });
+    if (!games.length) {
+      addMsg('<div class="sm-empty">No game log found for ' + cap(found.name) + ' in 2025-26. Player may not have played yet.</div>');
+      return;
+    }
 
     var sub = 'Last ' + games.length + ' games · 2025-26 season';
     addMsg(renderTable(games, found.name, sub));
