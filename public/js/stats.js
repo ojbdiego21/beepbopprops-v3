@@ -217,7 +217,8 @@ window.searchStats = async function() {
   }
 
   try {
-    var url = '/api/nba/gamelog?playerId=' + found.id;
+    // Pass both NBA ID (for fallback) and name (for BDL search)
+    var url = '/api/nba/gamelog?playerId=' + found.id + '&playerName=' + encodeURIComponent(found.name);
     var r = await fetch(url);
     var d = await r.json();
     removeTyping(tid);

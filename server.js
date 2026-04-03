@@ -795,59 +795,82 @@ app.get('/api/nba/positionshots', async (req,res) => {
 
 // NBA Stats Proxy — bypasses CORS for browser requests
 app.get('/api/nba/gamelog', async (req,res) => {
-  try {
-    const { playerId } = req.query;
-    if (!playerId) return res.status(400).json({success:false,error:'No playerId'});
+  // BallDontLie API — reliable, never blocks, uses API key
+  // Falls back to NBA Stats API if no key set
+  const BDL_KEY = process.env.BALLDONTLIE_API_KEY;
+  const { playerId, playerName } = req.query;
 
-    // ESPN API — reliable, no CORS blocking, same data
-    // ESPN uses their own player IDs — we map from NBA ID via lookup
-    // Try ESPN athlete game log endpoint
-    const url = `https://site.web.api.espn.com/apis/common/v3/sports/basketball/nba/athletes/${playerId}/gamelog?season=2026`;
-    const { data } = await axios.get(url, {
-      timeout:10000,
-      headers:{ 'User-Agent':'Mozilla/5.0 (compatible)', 'Accept':'application/json' }
-    });
-
-    // ESPN gamelog format
-    const events = data.events || {};
-    const categories = (data.labels || []);
-    const rows = [];
-
-    Object.entries(events).forEach(([eventId, ev]) => {
-      const stats = ev.stats || [];
-      const atHome = ev.home === true;
-      const opp = ev.opponent?.abbreviation || '';
-      const result = ev.gameResult || '';
-      const date = (ev.gameDate || '').split('T')[0];
-      const matchup = atHome ? 'vs ' + opp : '@ ' + opp;
-
-      // Map ESPN stat order: PTS REB AST STL BLK TO FGM FGA FG3M FG3A FTM FTA MIN +/-
-      const s = stats.map(Number);
-      rows.push({
-        date, matchup,
-        result: result === 'W' ? 'W' : result === 'L' ? 'L' : result,
-        pts:  s[0]||0, reb:  s[1]||0, ast:  s[2]||0,
-        stl:  s[3]||0, blk:  s[4]||0, tov:  s[5]||0,
-        fgm:  s[6]||0, fga:  s[7]||0,
-        fg3m: s[8]||0, fg3a: s[9]||0,
-        ftm:  s[10]||0,fta:  s[11]||0,
-        min:  s[12]||0,plusMinus: s[13]||0,
-      });
-    });
-
-    // Sort by date desc (most recent first)
-    rows.sort((a,b) => (b.date||'').localeCompare(a.date||''));
-
-    if (rows.length === 0) {
-      // Fallback: try NBA Stats API with full headers
-      return tryNBAStats(playerId, res);
-    }
-
-    res.json({success:true, source:'espn', rows});
-  } catch(e) {
-    // Fallback to NBA Stats API
-    tryNBAStats(req.query.playerId, res);
+  if (!playerId && !playerName) {
+    return res.status(400).json({success:false, error:'No playerId or playerName'});
   }
+
+  // Try BallDontLie first if key available
+  if (BDL_KEY) {
+    try {
+      // Search for player by name to get BDL player ID
+      const nameToSearch = playerName || String(playerId);
+      const searchRes = await axios.get('https://api.balldontlie.io/v1/players/active', {
+        timeout:8000,
+        headers:{ Authorization: BDL_KEY },
+        params:{ search: nameToSearch, per_page: 5 }
+      });
+      const players = searchRes.data.data || [];
+      if (!players.length) throw new Error('Player not found in BDL');
+
+      const bdlPlayer = players[0];
+      const bdlId = bdlPlayer.id;
+
+      // Get stats for 2025-26 season (season param = 2025 for 2025-26)
+      const statsRes = await axios.get('https://api.balldontlie.io/v1/stats', {
+        timeout:10000,
+        headers:{ Authorization: BDL_KEY },
+        params:{
+          'player_ids[]': bdlId,
+          'seasons[]': 2025,
+          per_page: 25,
+          'postseason': false,
+        }
+      });
+
+      const rawStats = statsRes.data.data || [];
+      if (!rawStats.length) throw new Error('No stats found');
+
+      // Sort by game date descending
+      rawStats.sort((a,b) => (b.game?.date||'').localeCompare(a.game?.date||''));
+
+      const rows = rawStats.map(s => {
+        const g = s.game || {};
+        const homeTeam = g.home_team?.abbreviation || '';
+        const visTeam = g.visitor_team?.abbreviation || '';
+        const playerTeam = s.team?.abbreviation || '';
+        const isHome = playerTeam === homeTeam;
+        return {
+          date:      g.date ? g.date.split('T')[0] : '',
+          matchup:   isHome ? 'vs ' + visTeam : '@ ' + homeTeam,
+          result:    g.status === 'Final' ? (
+            isHome
+              ? (g.home_team_score > g.visitor_team_score ? 'W' : 'L')
+              : (g.visitor_team_score > g.home_team_score ? 'W' : 'L')
+          ) : '-',
+          pts:  s.pts  || 0, reb:  s.reb  || 0, ast: s.ast || 0,
+          stl:  s.stl  || 0, blk:  s.blk  || 0, tov: s.turnover || 0,
+          fgm:  s.fgm  || 0, fga:  s.fga  || 0,
+          fg3m: s.fg3m || 0, fg3a: s.fg3a || 0,
+          ftm:  s.ftm  || 0, fta:  s.fta  || 0,
+          min:  s.min  ? parseInt(s.min) : 0,
+          plusMinus: 0,
+        };
+      });
+
+      return res.json({success:true, source:'balldontlie', rows});
+    } catch(e) {
+      console.log('BDL failed:', e.message, '— falling back to NBA Stats API');
+    }
+  }
+
+  // Fallback: NBA Stats API with full browser headers
+  
+  return tryNBAStats(playerId || playerName, res);
 });
 
 async function tryNBAStats(playerId, res) {
