@@ -6,13 +6,7 @@ const cors    = require('cors');
 const axios   = require('axios');
 const path    = require('path');
 const cron    = require('node-cron');
-const { Pool } = require('pg');
-const { queryDB } = require('./db_query');
-
-// PostgreSQL pool (optional — works without it, just no DB queries)
-const pgPool = process.env.DATABASE_URL
-  ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
-  : null;
+// DB support removed - using BDL API directly
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -801,140 +795,83 @@ app.get('/api/nba/positionshots', async (req,res) => {
 });
 
 // NBA Stats Proxy — bypasses CORS for browser requests
-// DB query endpoint — natural language to SQL
-app.post('/api/db/query', async (req,res) => {
-  const { question } = req.body || {};
-  if (!question) return res.status(400).json({success:false});
-  try {
-    const result = await queryDB(question);
-    res.json({success:true, result});
-  } catch(e) {
-    res.json({success:false, error:e.message});
-  }
-});
-
-// Nightly sync — pull yesterday's games from BDL into postgres
-async function syncLastNight() {
-  if (!pgPool || !process.env.BALLDONTLIE_API_KEY) return;
-  try {
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
-    const dateStr = yesterday.toISOString().split('T')[0];
-    const BDL_KEY = process.env.BALLDONTLIE_API_KEY;
-    let cursor = null; let count = 0;
-    do {
-      const r = await axios.get('https://api.balldontlie.io/v1/stats', {
-        headers:{ Authorization: BDL_KEY },
-        params:{ 'seasons[]':2025, 'dates[]':dateStr, per_page:100, ...(cursor?{cursor}:{}) },
-        timeout:12000
-      });
-      const rows = r.data.data || [];
-      for (const s of rows) {
-        const g = s.game||{}, t=s.team||{}, p=s.player||{};
-        const homeAbbr=g.home_team?.abbreviation||'', visAbbr=g.visitor_team?.abbreviation||'';
-        const myAbbr=t.abbreviation||'', isHome=myAbbr===homeAbbr;
-        const opp=isHome?visAbbr:homeAbbr;
-        const myScore=isHome?g.home_team_score:g.visitor_team_score;
-        const oppScore=isHome?g.visitor_team_score:g.home_team_score;
-        const result=g.status==='Final'?(myScore>oppScore?'W':'L'):null;
-        await pgPool.query(`
-          INSERT INTO players (id,first_name,last_name,position,team_abbr)
-          VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO UPDATE SET team_abbr=$5,updated_at=NOW()
-        `,[p.id,p.first_name,p.last_name,p.position||'',t.abbreviation||'']);
-        await pgPool.query(`
-          INSERT INTO game_logs (player_id,game_id,game_date,season,home,opponent,result,
-            pts,reb,ast,stl,blk,tov,fgm,fga,fg3m,fg3a,ftm,fta,minutes)
-          VALUES ($1,$2,$3,'2025-26',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-          ON CONFLICT (player_id,game_id) DO NOTHING
-        `,[p.id,g.id,dateStr,isHome,opp,result,
-           s.pts||0,s.reb||0,s.ast||0,s.stl||0,s.blk||0,s.turnover||0,
-           s.fgm||0,s.fga||0,s.fg3m||0,s.fg3a||0,s.ftm||0,s.fta||0,
-           s.min?parseInt(s.min):0]);
-        count++;
-      }
-      cursor=r.data.meta?.next_cursor;
-    } while(cursor);
-    await pgPool.query(`INSERT INTO sync_log (stats_synced,notes) VALUES ($1,$2)`,[count,'Nightly: '+dateStr]);
-    console.log('✅ Nightly sync: '+count+' rows for '+dateStr);
-  } catch(e) { console.error('❌ Nightly sync failed:', e.message); }
-}
-
 app.get('/api/nba/gamelog', async (req,res) => {
-  // BallDontLie API — reliable, never blocks, uses API key
-  // Falls back to NBA Stats API if no key set
   const BDL_KEY = process.env.BALLDONTLIE_API_KEY;
-  const { playerId, playerName } = req.query;
+  const playerName = req.query.playerName || '';
+  const nbaId = req.query.playerId || '';
 
-  if (!playerId && !playerName) {
-    return res.status(400).json({success:false, error:'No playerId or playerName'});
+  if (!playerName && !nbaId) {
+    return res.status(400).json({success:false, error:'Need playerName'});
   }
 
-  // Try BallDontLie first if key available
+  // ── BDL API (primary) ──
   if (BDL_KEY) {
     try {
-      // Search for player by name to get BDL player ID
-      const nameToSearch = playerName || String(playerId);
+      // Step 1: Find BDL player ID by searching name
+      const searchName = playerName || nbaId;
       const searchRes = await axios.get('https://api.balldontlie.io/v1/players/active', {
-        timeout:8000,
-        headers:{ Authorization: BDL_KEY },
-        params:{ search: nameToSearch, per_page: 5 }
+        headers: { Authorization: BDL_KEY },
+        params: { search: searchName, per_page: 5 },
+        timeout: 8000,
       });
-      const players = searchRes.data.data || [];
-      if (!players.length) throw new Error('Player not found in BDL');
+      const found = (searchRes.data.data || [])[0];
+      if (!found) throw new Error('Player not found: ' + searchName);
 
-      const bdlPlayer = players[0];
-      const bdlId = bdlPlayer.id;
+      // Step 2: Get their stats for 2025-26
+      let allStats = [], cursor = null;
+      do {
+        const r = await axios.get('https://api.balldontlie.io/v1/stats', {
+          headers: { Authorization: BDL_KEY },
+          params: {
+            'player_ids[]': found.id,
+            'seasons[]': 2025,
+            per_page: 100,
+            postseason: false,
+            ...(cursor ? { cursor } : {}),
+          },
+          timeout: 10000,
+        });
+        allStats = allStats.concat(r.data.data || []);
+        cursor = r.data.meta?.next_cursor;
+      } while (cursor && allStats.length < 82);
 
-      // Get stats for 2025-26 season (season param = 2025 for 2025-26)
-      const statsRes = await axios.get('https://api.balldontlie.io/v1/stats', {
-        timeout:10000,
-        headers:{ Authorization: BDL_KEY },
-        params:{
-          'player_ids[]': bdlId,
-          'seasons[]': 2025,
-          per_page: 25,
-          'postseason': false,
-        }
-      });
+      if (!allStats.length) throw new Error('No stats found');
 
-      const rawStats = statsRes.data.data || [];
-      if (!rawStats.length) throw new Error('No stats found');
+      // Step 3: Format — sort newest first
+      allStats.sort((a,b) => (b.game?.date||'').localeCompare(a.game?.date||''));
 
-      // Sort by game date descending
-      rawStats.sort((a,b) => (b.game?.date||'').localeCompare(a.game?.date||''));
-
-      const rows = rawStats.map(s => {
+      const rows = allStats.map(s => {
         const g = s.game || {};
-        const homeTeam = g.home_team?.abbreviation || '';
-        const visTeam = g.visitor_team?.abbreviation || '';
-        const playerTeam = s.team?.abbreviation || '';
-        const isHome = playerTeam === homeTeam;
+        const myAbbr = s.team?.abbreviation || '';
+        const homeAbbr = g.home_team?.abbreviation || '';
+        const isHome = myAbbr === homeAbbr;
+        const opp = isHome ? g.visitor_team?.abbreviation : g.home_team?.abbreviation;
+        const myScore = isHome ? g.home_team_score : g.visitor_team_score;
+        const oppScore = isHome ? g.visitor_team_score : g.home_team_score;
+        const result = g.status === 'Final' ? (myScore > oppScore ? 'W' : 'L') : '-';
         return {
-          date:      g.date ? g.date.split('T')[0] : '',
-          matchup:   isHome ? 'vs ' + visTeam : '@ ' + homeTeam,
-          result:    g.status === 'Final' ? (
-            isHome
-              ? (g.home_team_score > g.visitor_team_score ? 'W' : 'L')
-              : (g.visitor_team_score > g.home_team_score ? 'W' : 'L')
-          ) : '-',
-          pts:  s.pts  || 0, reb:  s.reb  || 0, ast: s.ast || 0,
-          stl:  s.stl  || 0, blk:  s.blk  || 0, tov: s.turnover || 0,
-          fgm:  s.fgm  || 0, fga:  s.fga  || 0,
-          fg3m: s.fg3m || 0, fg3a: s.fg3a || 0,
-          ftm:  s.ftm  || 0, fta:  s.fta  || 0,
-          min:  s.min  ? parseInt(s.min) : 0,
+          date:      (g.date||'').split('T')[0],
+          matchup:   (isHome ? 'vs ' : '@ ') + (opp||''),
+          result,
+          pts: s.pts||0,  reb: s.reb||0,   ast: s.ast||0,
+          stl: s.stl||0,  blk: s.blk||0,   tov: s.turnover||0,
+          fgm: s.fgm||0,  fga: s.fga||0,
+          fg3m:s.fg3m||0, fg3a:s.fg3a||0,
+          ftm: s.ftm||0,  fta: s.fta||0,
+          min: s.min ? parseInt(s.min)||0 : 0,
           plusMinus: 0,
         };
       });
 
-      return res.json({success:true, source:'balldontlie', rows});
+      return res.json({ success:true, source:'balldontlie', rows });
     } catch(e) {
-      console.log('BDL failed:', e.message, '— falling back to NBA Stats API');
+      console.log('BDL failed:', e.message);
+      // fall through to NBA Stats
     }
   }
 
-  // Fallback: NBA Stats API with full browser headers
-  
-  return tryNBAStats(playerId || playerName, res);
+  // ── NBA Stats API (fallback) ──
+  return tryNBAStats(nbaId, res);
 });
 
 async function tryNBAStats(playerId, res) {
@@ -999,8 +936,7 @@ app.listen(PORT, async () => {
   await fetchOddsAPI();
   // Refresh ESPN every 15 min during game hours
   cron.schedule('*/15 12-23 * * *', fetchESPN, {timezone:'America/New_York'});
-  // Nightly DB sync at 2am ET
-  cron.schedule('0 2 * * *', syncLastNight, {timezone:'America/New_York'});
+
   // Refresh Odds API every 30 min (conserve free tier requests)
   cron.schedule('*/15 11-23 * * *', fetchOddsAPI, {timezone:'America/New_York'}); // 15min refresh
   // Midnight reset
