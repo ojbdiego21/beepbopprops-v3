@@ -1,3 +1,92 @@
+
+// ── RENDER DB RESULTS ──
+function renderDBResult(result, question) {
+  if (!result || !result.rows || !result.rows.length) return '<div class="sm-empty">No data found for that query.</div>';
+
+  if (result.type === 'game_log') {
+    var p = result.player;
+    var name = (p.first_name||'') + ' ' + (p.last_name||'');
+    var sub = 'Last ' + result.rows.length + ' games · 2025-26' + (result.opponent?' · vs '+result.opponent:'');
+    return renderTable(result.rows.map(function(r){
+      return {
+        date: r.game_date ? String(r.game_date).split('T')[0] : '',
+        matchup: (r.home ? 'vs ' : '@ ') + (r.opponent||''),
+        result: r.result||'-',
+        pts:r.pts||0, reb:r.reb||0, ast:r.ast||0,
+        stl:r.stl||0, blk:r.blk||0, tov:r.tov||0,
+        fgm:r.fgm||0, fga:r.fga||0, fg3m:r.fg3m||0, fg3a:r.fg3a||0,
+        ftm:r.ftm||0, fta:r.fta||0, min:r.minutes||0, plusMinus:r.plus_minus||0,
+      };
+    }), name, sub, null);
+  }
+
+  if (result.type === 'team_rankings') {
+    var html = '<div class="sm-card"><div class="sm-header"><div class="sm-player-name">Team Rankings</div>';
+    html += '<div class="sm-subtitle">2025-26 · ' + result.question + '</div></div>';
+    html += '<div class="sm-table-wrap"><table class="sm-table"><thead><tr>';
+    html += '<th>#</th><th>Team</th><th class="gold">Pts Allowed</th><th>Reb</th><th>Ast</th><th>3PM</th><th>Games</th>';
+    html += '</tr></thead><tbody>';
+    result.rows.forEach(function(r, i) {
+      html += '<tr class="'+(i%2===0?'sm-even':'')+'">'
+        + '<td class="sm-date">' + (i+1) + '</td>'
+        + '<td class="sm-pts">' + r.team + '</td>'
+        + '<td class="sm-hi">' + r.avg_pts_allowed + '</td>'
+        + '<td>' + r.avg_reb_allowed + '</td>'
+        + '<td>' + r.avg_ast_allowed + '</td>'
+        + '<td>' + r.avg_3pm_allowed + '</td>'
+        + '<td class="sm-small">' + r.games + '</td>'
+        + '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+    return html;
+  }
+
+  if (result.type === 'position_vs_team') {
+    var html2 = '<div class="sm-card"><div class="sm-header">';
+    html2 += '<div class="sm-player-name">' + result.pos + 's vs ' + result.team + '</div>';
+    html2 += '<div class="sm-subtitle">2025-26 · Top performers against ' + result.team + '</div></div>';
+    html2 += '<div class="sm-table-wrap"><table class="sm-table"><thead><tr>';
+    html2 += '<th>#</th><th style="text-align:left">Player</th><th>Team</th><th class="gold">PPG</th><th>RPG</th><th>APG</th><th>G</th>';
+    html2 += '</tr></thead><tbody>';
+    result.rows.forEach(function(r, i) {
+      html2 += '<tr class="'+(i%2===0?'sm-even':'')+'">'
+        + '<td class="sm-date">' + (i+1) + '</td>'
+        + '<td class="sm-matchup">' + r.player_name + '</td>'
+        + '<td class="sm-small">' + r.team + '</td>'
+        + '<td class="sm-hi">' + r.avg_pts + '</td>'
+        + '<td>' + r.avg_reb + '</td>'
+        + '<td>' + r.avg_ast + '</td>'
+        + '<td class="sm-small">' + r.games + '</td>'
+        + '</tr>';
+    });
+    html2 += '</tbody></table></div></div>';
+    return html2;
+  }
+
+  if (result.type === 'team_weakness') {
+    var html3 = '<div class="sm-card"><div class="sm-header">';
+    html3 += '<div class="sm-player-name">' + result.team + ' Defensive Breakdown by Position</div>';
+    html3 += '<div class="sm-subtitle">2025-26 · Avg stats allowed by ' + result.team + '</div></div>';
+    html3 += '<div class="sm-table-wrap"><table class="sm-table"><thead><tr>';
+    html3 += '<th>Position</th><th class="gold">Pts Allowed</th><th>Reb</th><th>Ast</th><th>3PM</th><th>Games</th>';
+    html3 += '</tr></thead><tbody>';
+    result.rows.forEach(function(r, i) {
+      html3 += '<tr class="'+(i%2===0?'sm-even':'')+'">'
+        + '<td class="sm-pts">' + r.position_group + '</td>'
+        + '<td class="'+(parseFloat(r.avg_pts)>=20?'sm-hi':'sm-stat')+'">' + r.avg_pts + '</td>'
+        + '<td>' + r.avg_reb + '</td>'
+        + '<td>' + r.avg_ast + '</td>'
+        + '<td>' + r.avg_3pm + '</td>'
+        + '<td class="sm-small">' + r.games + '</td>'
+        + '</tr>';
+    });
+    html3 += '</tbody></table></div></div>';
+    return html3;
+  }
+
+  return '<div class="sm-empty">Result type not supported yet.</div>';
+}
+
 // BeepBopStats — Game logs via BDL API + AI analysis for StatMuse-style questions
 
 var PLAYER_IDS = {
@@ -255,7 +344,21 @@ window.searchStats = async function() {
   addUserMsg(q);
   var tid = addTyping();
 
-  // Route: game log or analytical question?
+  // Try DB first (if postgres connected) — handles all query types
+  try {
+    var dbRes = await fetch('/api/db/query', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question: q})
+    });
+    var dbData = await dbRes.json();
+    if (dbData.success && dbData.result) {
+      removeTyping(tid);
+      addMsg(renderDBResult(dbData.result, q));
+      return;
+    }
+  } catch(e) { /* DB not connected, fall through */ }
+
+  // Fallback: game log via BDL API or AI
   if (isGameLogQuery(q)) {
     // GAME LOG via API
     var found = findPlayer(q);

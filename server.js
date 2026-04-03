@@ -6,6 +6,13 @@ const cors    = require('cors');
 const axios   = require('axios');
 const path    = require('path');
 const cron    = require('node-cron');
+const { Pool } = require('pg');
+const { queryDB } = require('./db_query');
+
+// PostgreSQL pool (optional — works without it, just no DB queries)
+const pgPool = process.env.DATABASE_URL
+  ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+  : null;
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -794,6 +801,63 @@ app.get('/api/nba/positionshots', async (req,res) => {
 });
 
 // NBA Stats Proxy — bypasses CORS for browser requests
+// DB query endpoint — natural language to SQL
+app.post('/api/db/query', async (req,res) => {
+  const { question } = req.body || {};
+  if (!question) return res.status(400).json({success:false});
+  try {
+    const result = await queryDB(question);
+    res.json({success:true, result});
+  } catch(e) {
+    res.json({success:false, error:e.message});
+  }
+});
+
+// Nightly sync — pull yesterday's games from BDL into postgres
+async function syncLastNight() {
+  if (!pgPool || !process.env.BALLDONTLIE_API_KEY) return;
+  try {
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
+    const dateStr = yesterday.toISOString().split('T')[0];
+    const BDL_KEY = process.env.BALLDONTLIE_API_KEY;
+    let cursor = null; let count = 0;
+    do {
+      const r = await axios.get('https://api.balldontlie.io/v1/stats', {
+        headers:{ Authorization: BDL_KEY },
+        params:{ 'seasons[]':2025, 'dates[]':dateStr, per_page:100, ...(cursor?{cursor}:{}) },
+        timeout:12000
+      });
+      const rows = r.data.data || [];
+      for (const s of rows) {
+        const g = s.game||{}, t=s.team||{}, p=s.player||{};
+        const homeAbbr=g.home_team?.abbreviation||'', visAbbr=g.visitor_team?.abbreviation||'';
+        const myAbbr=t.abbreviation||'', isHome=myAbbr===homeAbbr;
+        const opp=isHome?visAbbr:homeAbbr;
+        const myScore=isHome?g.home_team_score:g.visitor_team_score;
+        const oppScore=isHome?g.visitor_team_score:g.home_team_score;
+        const result=g.status==='Final'?(myScore>oppScore?'W':'L'):null;
+        await pgPool.query(`
+          INSERT INTO players (id,first_name,last_name,position,team_abbr)
+          VALUES ($1,$2,$3,$4,$5) ON CONFLICT (id) DO UPDATE SET team_abbr=$5,updated_at=NOW()
+        `,[p.id,p.first_name,p.last_name,p.position||'',t.abbreviation||'']);
+        await pgPool.query(`
+          INSERT INTO game_logs (player_id,game_id,game_date,season,home,opponent,result,
+            pts,reb,ast,stl,blk,tov,fgm,fga,fg3m,fg3a,ftm,fta,minutes)
+          VALUES ($1,$2,$3,'2025-26',$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+          ON CONFLICT (player_id,game_id) DO NOTHING
+        `,[p.id,g.id,dateStr,isHome,opp,result,
+           s.pts||0,s.reb||0,s.ast||0,s.stl||0,s.blk||0,s.turnover||0,
+           s.fgm||0,s.fga||0,s.fg3m||0,s.fg3a||0,s.ftm||0,s.fta||0,
+           s.min?parseInt(s.min):0]);
+        count++;
+      }
+      cursor=r.data.meta?.next_cursor;
+    } while(cursor);
+    await pgPool.query(`INSERT INTO sync_log (stats_synced,notes) VALUES ($1,$2)`,[count,'Nightly: '+dateStr]);
+    console.log('✅ Nightly sync: '+count+' rows for '+dateStr);
+  } catch(e) { console.error('❌ Nightly sync failed:', e.message); }
+}
+
 app.get('/api/nba/gamelog', async (req,res) => {
   // BallDontLie API — reliable, never blocks, uses API key
   // Falls back to NBA Stats API if no key set
@@ -935,6 +999,8 @@ app.listen(PORT, async () => {
   await fetchOddsAPI();
   // Refresh ESPN every 15 min during game hours
   cron.schedule('*/15 12-23 * * *', fetchESPN, {timezone:'America/New_York'});
+  // Nightly DB sync at 2am ET
+  cron.schedule('0 2 * * *', syncLastNight, {timezone:'America/New_York'});
   // Refresh Odds API every 30 min (conserve free tier requests)
   cron.schedule('*/15 11-23 * * *', fetchOddsAPI, {timezone:'America/New_York'}); // 15min refresh
   // Midnight reset
