@@ -1,3 +1,4 @@
+// BeepBopProps$ v4.1 — rebuilt 2026-04-04 09:26
 // BeepBopProps$ — Single File Server v4
 // No database. Always fresh. March 31 2026.
 require('dotenv').config();
@@ -142,16 +143,7 @@ const SEEDED_PROPS = [
     hitRateLast10:'3/10', nbaPhotoId:'1641749', reasoning:'FADE OVER — BKN 7.8% win prob vs CHA. BKN players score less in blowout losses. Fade all BKN props.' },
 ];
 
-SEEDED_PROPS.forEach(p => {
-  p.altLines = buildAltLines(p.dkLine, p.dkOdds);
-  // Generate projected line: confidence-adjusted vs book line
-  // High confidence = projection above line; low = below
-  const base = parseFloat(p.dkLine || p.line || 0);
-  const bias = p.direction === 'over' ? 1 : -1;
-  const conf = p.confidence || 60;
-  const bump = bias * ((conf - 50) / 100) * base * 0.12;
-  p.projectedLine = Math.round((base + bump) * 10) / 10;
-});
+
 
 // ── PLAYER STATS DATABASE ──
 const PLAYER_STATS = {
@@ -191,6 +183,16 @@ const PLAYER_STATS = {
   'cade cunningham':         { team:'DET', pts:23.8, reb:5.1, ast:7.2, stl:1.3, blk:0.4, fg:'46.8%', three:'37.1%', gp:55, min:34.1, note:'OUT — collapsed lung injury' },
   'evan mobley':             { team:'CLE', pts:18.8, reb:9.8, ast:3.1, stl:0.9, blk:1.8, fg:'54.1%', three:'34.8%', gp:70, min:33.8, note:'CLE @ LAL tonight — big boards spot' },
   'paolo banchero':          { team:'ORL', pts:21.8, reb:6.4, ast:4.2, stl:1.0, blk:0.8, fg:'47.8%', three:'32.1%', gp:67, min:33.8, note:'ORL @ PHX tonight' },
+  'matas buzelis':        { team:'CHI', pts:16.4, reb:5.1, ast:2.8, stl:0.9, blk:0.8, fg:'47.2%', three:'34.0%', gp:68, min:30.1, note:'CHI rising star' },
+  'noah clowney':         { team:'BKN', pts:11.2, reb:6.8, ast:1.4, stl:0.9, blk:1.2, fg:'44.1%', three:'31.0%', gp:60, min:26.4, note:'BKN frontcourt piece' },
+  'tyrese haliburton':    { team:'IND', pts:20.1, reb:4.2, ast:10.9, stl:1.3, blk:0.3, fg:'46.2%', three:'38.1%', gp:55, min:33.8, note:'IND floor general' },
+  'kyrie irving':         { team:'DAL', pts:24.6, reb:4.8, ast:5.0, stl:1.3, blk:0.4, fg:'49.8%', three:'39.2%', gp:0,  min:0,    note:'OUT — season-ending ACL' },
+  'dejounte murray':      { team:'NOP', pts:21.3, reb:5.1, ast:6.2, stl:1.8, blk:0.4, fg:'46.1%', three:'35.2%', gp:61, min:33.2, note:'NOP lead guard' },
+  'zion williamson':      { team:'NOP', pts:22.4, reb:7.1, ast:4.1, stl:1.1, blk:0.7, fg:'57.8%', three:'20.1%', gp:48, min:31.4, note:'NOP star — injury history' },
+  'ja morant':            { team:'MEM', pts:22.8, reb:5.2, ast:8.1, stl:0.9, blk:0.4, fg:'46.8%', three:'30.1%', gp:58, min:32.1, note:'MEM franchise player' },
+  'jamal murray':         { team:'DEN', pts:21.2, reb:4.1, ast:6.4, stl:1.0, blk:0.3, fg:'47.1%', three:'38.8%', gp:54, min:32.8, note:'DEN co-star' },
+  'pascal siakam':        { team:'IND', pts:20.2, reb:7.1, ast:3.8, stl:0.9, blk:0.8, fg:'51.2%', three:'32.1%', gp:65, min:33.1, note:'IND veteran forward' },
+  'steph curry':          { team:'GSW', pts:24.1, reb:4.3, ast:5.9, stl:1.2, blk:0.2, fg:'47.9%', three:'41.3%', gp:58, min:32.8, note:'Questionable (ankle)' },
 };
 
 // ── WIN PROBABILITY — derived live from spread/moneyline, no hardcoded games ──
@@ -451,6 +453,65 @@ const PHOTO_IDS = {
   'Scoot Henderson':'1641706',
 };
 
+// ── STAT TYPE MAP: which PLAYER_STATS field to use for each prop type ──
+const STAT_FIELD = {
+  'points':'pts', 'rebounds':'reb', 'assists':'ast',
+  'steals':'stl', 'blocks':'blk', 'threes':'three',
+  'points_rebounds_assists':'pra', 'points_rebounds':'pr',
+  'points_assists':'pa', 'rebounds_assists':'ra',
+  'double_double':'dd',
+};
+
+SEEDED_PROPS.forEach(p => {
+  p.altLines = buildAltLines(p.dkLine, p.dkOdds);
+
+  // Find season avg for this player + stat from PLAYER_STATS
+  const nameKey = (p.playerName||'').toLowerCase();
+  const playerStat = PLAYER_STATS[nameKey];
+
+  let projected = null;
+
+  if (playerStat) {
+    const statType = p.statType || '';
+    let seasonAvg = null;
+
+    if (statType === 'points')   seasonAvg = playerStat.pts;
+    else if (statType === 'rebounds') seasonAvg = playerStat.reb;
+    else if (statType === 'assists')  seasonAvg = playerStat.ast;
+    else if (statType === 'steals')   seasonAvg = playerStat.stl;
+    else if (statType === 'blocks')   seasonAvg = playerStat.blk;
+    else if (statType === 'threes')   seasonAvg = parseFloat((playerStat.three||'0%')) * (playerStat.fg3a || 6);
+    else if (statType === 'points_rebounds_assists') seasonAvg = playerStat.pts + playerStat.reb + playerStat.ast;
+    else if (statType === 'points_rebounds')   seasonAvg = playerStat.pts + playerStat.reb;
+    else if (statType === 'points_assists')    seasonAvg = playerStat.pts + playerStat.ast;
+    else if (statType === 'rebounds_assists')  seasonAvg = playerStat.reb + playerStat.ast;
+
+    if (seasonAvg && seasonAvg > 0) {
+      // Season avg IS the base projection
+      // Apply small matchup adjustment based on reasoning text
+      let matchupMult = 1.0;
+      const reason = (p.reasoning || '').toLowerCase();
+      if (reason.includes('worst defense') || reason.includes('28th') || reason.includes('29th') || reason.includes('30th')) matchupMult = 1.05;
+      if (reason.includes('elite defense') || reason.includes('best defense') || reason.includes('1st in')) matchupMult = 0.95;
+      if (reason.includes('must-win') || reason.includes('clinch') || reason.includes('big game')) matchupMult = 1.04;
+      if (reason.includes('blowout') || reason.includes('rest') || reason.includes('load manage')) matchupMult = 0.92;
+
+      const raw = seasonAvg * matchupMult;
+      // Round to nearest 0.5
+      projected = Math.round(raw * 2) / 2;
+    }
+  }
+
+  // Fallback: if no player stats found, use line + tier bump
+  if (projected == null) {
+    const base = parseFloat(p.dkLine || p.line || 0);
+    const tMult = p.tier==='elite'?1.0:p.tier==='strong'?0.7:p.tier==='neutral'?0:p.tier==='fade'?-0.8:0;
+    projected = Math.round((base + tMult*0.04*base) * 2) / 2;
+  }
+
+  p.projectedLine = projected;
+});
+
 function processOddsData(games) {
   // Build gameId -> teams map from Odds API game data
   const gameTeams = {};
@@ -695,8 +756,19 @@ app.get('/api/games', (req,res) => {
 // PROPS — live from Odds API, fallback to seeded
 app.get('/api/props', (req,res) => {
   const tOrd={elite:0,strong:1,neutral:2,fade:3};
-  let props = store.liveProps.length > 0 ? store.liveProps : [...SEEDED_PROPS];
-  props = [...props].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
+  let rawProps = store.liveProps.length > 0 ? store.liveProps : [...SEEDED_PROPS];
+  // Add projected line to any props missing it
+  rawProps.forEach(p => {
+    if (p.projectedLine == null) {
+      const base = parseFloat(p.dkLine || p.line || 0);
+      const conf  = p.confidence || 55;
+      const tier  = p.tier || 'neutral';
+      const tMult = tier==='elite'?1.0:tier==='strong'?0.7:tier==='neutral'?0:tier==='fade'?-0.8:0;
+      const bump  = tMult * (0.03+((conf-50)/100)*0.05) * base;
+      p.projectedLine = Math.round((base+bump)*2)/2;
+    }
+  });
+  let props = [...rawProps].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
   if (req.query.type) props=props.filter(p=>p.statType===req.query.type);
   if (req.query.tier) props=props.filter(p=>p.tier===req.query.tier);
   const source = store.liveProps.length > 0 ? 'live' : 'seeded';
@@ -944,6 +1016,17 @@ app.get('/api/nba/career', async (req,res) => {
     }});
     res.json({success:true, data});
   } catch(e){ res.status(500).json({success:false,error:e.message}); }
+});
+
+app.get('/api/debug/proj',(req,res)=>{
+  const sample = [...SEEDED_PROPS].slice(0,5).map(p=>({
+    name: p.playerName,
+    stat: p.statType,
+    line: p.dkLine,
+    projected: p.projectedLine,
+    diff: p.projectedLine != null ? (p.projectedLine - p.dkLine).toFixed(1) : 'null'
+  }));
+  res.json({sample});
 });
 
 app.get('/api/health',(req,res)=>res.json({status:'ok',time:new Date().toISOString(),games:store.games.length,injuries:store.injuries.length,liveProps:store.liveProps.length,source:store.liveProps.length>0?'Odds API (LIVE)':'Seeded (hardcoded)'}));
