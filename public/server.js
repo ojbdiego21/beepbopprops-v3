@@ -145,81 +145,302 @@ const SEEDED_PROPS = [
 
 
 
-// ── PLAYER STATS DATABASE — Real 2025-26 Season Averages ──
+// ── PLAYER STATS DATABASE ──
 const PLAYER_STATS = {
-  // PPG Leaders (verified from landofbasketball.com)
-  'luka doncic':               { team:'LAL', pts:33.7, reb:8.5, ast:9.0, stl:1.3, blk:0.5, three:4.0,  gp:62,  note:'PPG leader 2025-26' },
-  'shai gilgeous-alexander':   { team:'OKC', pts:31.4, reb:5.2, ast:6.3, stl:1.9, blk:0.8, three:2.1,  gp:62,  note:'MVP frontrunner' },
-  'anthony edwards':           { team:'MIN', pts:29.5, reb:5.5, ast:5.3, stl:1.4, blk:0.7, three:3.1,  gp:58,  note:'ANT — top scorer' },
-  'tyrese maxey':              { team:'PHI', pts:29.0, reb:4.0, ast:6.6, stl:2.0, blk:0.4, three:2.8,  gp:61,  note:'Steals leader' },
-  'jaylen brown':              { team:'BOS', pts:28.6, reb:5.6, ast:4.1, stl:1.1, blk:0.5, three:2.4,  gp:65,  note:'BOS #1 option' },
-  'kawhi leonard':             { team:'LAC', pts:28.3, reb:6.4, ast:3.9, stl:1.6, blk:0.5, three:2.2,  gp:58,  note:'Career-high scoring' },
-  'nikola jokic':              { team:'DEN', pts:27.9, reb:12.8, ast:10.8, stl:1.4, blk:0.8, three:1.2, gp:59, note:'Assists+rebounds leader' },
-  'donovan mitchell':          { team:'CLE', pts:27.9, reb:4.7, ast:5.9, stl:1.5, blk:0.4, three:2.8,  gp:65,  note:'CLE star' },
-  'jalen brunson':             { team:'NYK', pts:26.2, reb:3.8, ast:7.3, stl:0.9, blk:0.2, three:2.1,  gp:68,  note:'NYK floor general' },
-  'kevin durant':              { team:'HOU', pts:26.0, reb:5.9, ast:4.3, stl:0.8, blk:1.1, three:2.4,  gp:70,  note:'HOU veteran leader' },
-  'jamal murray':              { team:'DEN', pts:25.5, reb:4.2, ast:6.5, stl:1.0, blk:0.3, three:2.6,  gp:70,  note:'DEN co-star' },
-  'devin booker':              { team:'PHX', pts:25.5, reb:4.2, ast:6.1, stl:1.0, blk:0.3, three:2.5,  gp:57,  note:'PHX franchise player' },
-  'cade cunningham':           { team:'DET', pts:24.5, reb:5.2, ast:7.3, stl:1.3, blk:0.4, three:2.2,  gp:61,  note:'OUT — collapsed lung' },
-  'victor wembanyama':         { team:'SAS', pts:24.2, reb:10.2, ast:3.6, stl:1.8, blk:3.1, three:1.8, gp:58, note:'Blocks leader' },
-  'james harden':              { team:'CLE', pts:24.0, reb:5.9, ast:7.6, stl:1.1, blk:0.4, three:3.1,  gp:64,  note:'CLE veteran' },
-  'deni avdija':               { team:'POR', pts:23.9, reb:7.2, ast:4.1, stl:1.3, blk:0.6, three:2.1,  gp:59,  note:'POR breakout star' },
-  'pascal siakam':             { team:'IND', pts:23.7, reb:7.2, ast:3.9, stl:0.9, blk:0.8, three:1.8,  gp:59,  note:'IND veteran forward' },
-  'keyonte george':            { team:'UTA', pts:23.6, reb:4.1, ast:5.8, stl:1.2, blk:0.3, three:3.2,  gp:54,  note:'UTA rising star' },
-  'jalen johnson':             { team:'ATL', pts:22.9, reb:9.0, ast:4.3, stl:1.1, blk:0.8, three:1.4,  gp:65,  note:'ATL franchise player' },
-  'paolo banchero':            { team:'ORL', pts:22.8, reb:6.5, ast:4.3, stl:1.0, blk:0.8, three:1.8,  gp:63,  note:'ORL star' },
-  'norman powell':             { team:'MIA', pts:22.1, reb:2.9, ast:2.2, stl:0.8, blk:0.2, three:3.1,  gp:55,  note:'MIA scorer' },
-  'trey murphy iii':           { team:'NOP', pts:21.7, reb:4.8, ast:2.8, stl:1.0, blk:0.5, three:3.2,  gp:64,  note:'NOP three-point threat' },
-  'brandon ingram':            { team:'TOR', pts:21.4, reb:5.8, ast:3.9, stl:0.8, blk:0.6, three:1.8,  gp:70,  note:'TOR veteran' },
-  'zion williamson':           { team:'NOP', pts:21.4, reb:7.2, ast:4.2, stl:1.1, blk:0.7, three:0.4,  gp:58,  note:'NOP paint scorer' },
-  'julius randle':             { team:'MIN', pts:21.1, reb:8.8, ast:3.9, stl:0.9, blk:0.5, three:1.4,  gp:73,  note:'MIN veteran' },
-  'lebron james':              { team:'LAL', pts:20.9, reb:7.9, ast:8.3, stl:1.2, blk:0.6, three:1.8,  gp:53,  note:'LAL all-time great' },
-  'cooper flagg':              { team:'DAL', pts:20.4, reb:6.7, ast:3.3, stl:1.1, blk:1.2, three:1.8,  gp:62,  note:'ROY contender' },
-  'alperen sengun':            { team:'HOU', pts:20.4, reb:9.9, ast:4.9, stl:1.0, blk:1.3, three:0.8,  gp:64,  note:'HOU young star' },
-  'nickeil alexander-walker':  { team:'ATL', pts:20.4, reb:4.1, ast:3.8, stl:1.4, blk:0.4, three:2.8,  gp:71,  note:'ATL guard' },
-  // Additional players commonly in props
-  'lamelo ball':               { team:'CHA', pts:27.1, reb:6.0, ast:8.9, stl:1.4, blk:0.4, three:3.5,  gp:65,  note:'CHA star' },
-  'giannis antetokounmpo':     { team:'MIL', pts:30.2, reb:11.8, ast:5.8, stl:1.2, blk:1.1, three:0.8, gp:67, note:'MIL MVP candidate' },
-  'stephen curry':             { team:'GSW', pts:24.1, reb:4.4, ast:6.0, stl:1.2, blk:0.2, three:4.1,  gp:58,  note:'GSW legend' },
-  'steph curry':               { team:'GSW', pts:24.1, reb:4.4, ast:6.0, stl:1.2, blk:0.2, three:4.1,  gp:58,  note:'GSW legend' },
-  'jayson tatum':              { team:'BOS', pts:26.7, reb:8.3, ast:5.0, stl:1.1, blk:0.6, three:2.8,  gp:72,  note:'BOS star' },
-  'bam adebayo':               { team:'MIA', pts:20.1, reb:10.0, ast:3.9, stl:1.1, blk:0.9, three:0.2, gp:68, note:'MIA anchor' },
-  'tyrese haliburton':         { team:'IND', pts:20.1, reb:4.3, ast:10.9, stl:1.3, blk:0.3, three:2.4, gp:55, note:'IND PG' },
-  'darius garland':            { team:'LAC', pts:21.1, reb:3.3, ast:7.9, stl:1.1, blk:0.2, three:2.8,  gp:52,  note:'LAC traded guard' },
-  'trae young':                { team:'WAS', pts:15.2, reb:3.1, ast:6.3, stl:0.9, blk:0.1, three:1.8,  gp:18,  note:'WAS — traded Jan 2026' },
-  'evan mobley':               { team:'CLE', pts:18.8, reb:9.9, ast:3.2, stl:0.9, blk:1.8, three:1.4,  gp:70,  note:'CLE big' },
-  'karl-anthony towns':        { team:'NYK', pts:24.1, reb:13.1, ast:3.4, stl:0.9, blk:0.8, three:2.2, gp:68, note:'NYK center' },
-  'dejounte murray':           { team:'NOP', pts:21.3, reb:5.2, ast:6.3, stl:1.8, blk:0.4, three:2.1,  gp:61,  note:'NOP guard' },
-  'ja morant':                 { team:'MEM', pts:22.8, reb:5.3, ast:8.2, stl:0.9, blk:0.4, three:1.2,  gp:58,  note:'MEM star' },
-  'damian lillard':            { team:'MIL', pts:24.8, reb:4.4, ast:7.1, stl:0.9, blk:0.3, three:3.8,  gp:65,  note:'MIL veteran PG' },
-  'matas buzelis':             { team:'CHI', pts:16.4, reb:5.2, ast:2.9, stl:0.9, blk:0.8, three:1.8,  gp:68,  note:'CHI young forward' },
-  'mikal bridges':             { team:'NYK', pts:17.1, reb:4.3, ast:3.9, stl:1.1, blk:0.5, three:2.2,  gp:70,  note:'NYK wing' },
-  'dyson daniels':             { team:'ATL', pts:11.2, reb:4.9, ast:4.0, stl:2.8, blk:0.4, three:1.2,  gp:70,  note:'Steals machine' },
-  'austin reaves':             { team:'LAL', pts:23.6, reb:4.3, ast:5.9, stl:1.0, blk:0.3, three:2.8,  gp:69,  note:'LAL scorer' },
-  'anthony davis':             { team:'WAS', pts:21.8, reb:10.3, ast:3.2, stl:1.2, blk:2.2, three:0.4, gp:49, note:'WAS traded star' },
-  'tyler herro':               { team:'MIA', pts:21.8, reb:4.2, ast:5.3, stl:0.9, blk:0.2, three:2.8,  gp:67,  note:'MIA scorer' },
-  'franz wagner':              { team:'ORL', pts:24.1, reb:5.8, ast:4.4, stl:1.1, blk:0.6, three:2.1,  gp:65,  note:'ORL rising star' },
-  'chet holmgren':             { team:'OKC', pts:17.8, reb:7.9, ast:2.1, stl:0.9, blk:2.8, three:1.8,  gp:58,  note:'OKC stretch big' },
-  'scottie barnes':            { team:'TOR', pts:21.2, reb:8.1, ast:6.1, stl:1.4, blk:0.8, three:1.4,  gp:62,  note:'TOR star' },
-  'desmond bane':              { team:'ORL', pts:18.2, reb:4.1, ast:3.8, stl:0.9, blk:0.4, three:2.8,  gp:61,  note:'ORL traded guard' },
-  'jalen suggs':               { team:'ORL', pts:13.8, reb:3.9, ast:5.4, stl:1.6, blk:0.4, three:1.8,  gp:58,  note:'ORL defensive guard' },
-  'immanuel quickley':         { team:'TOR', pts:19.1, reb:4.8, ast:6.2, stl:1.1, blk:0.3, three:2.4,  gp:61,  note:'TOR guard' },
-  'josh giddey':               { team:'CHI', pts:17.2, reb:7.8, ast:7.1, stl:1.0, blk:0.4, three:1.4,  gp:65,  note:'CHI versatile PG' },
-  'precious achiuwa':          { team:'SAC', pts:14.2, reb:8.1, ast:1.8, stl:0.8, blk:1.1, three:0.8,  gp:62,  note:'SAC big' },
-  'kon knueppel':              { team:'CHA', pts:18.8, reb:5.5, ast:3.5, stl:0.8, blk:0.4, three:3.8,  gp:72,  note:'ROY favorite — 3PT record' },
-  'dylan harper':              { team:'SAS', pts:14.2, reb:4.8, ast:5.1, stl:0.9, blk:0.4, three:1.2,  gp:65,  note:'SAS rookie' },
-  'derik queen':               { team:'NOP', pts:12.1, reb:7.8, ast:2.1, stl:0.8, blk:1.2, three:0.4,  gp:58,  note:'NOP rookie big' },
-  'jeremiah fears':            { team:'NOP', pts:13.1, reb:3.8, ast:3.3, stl:1.2, blk:0.3, three:1.4,  gp:72,  note:'NOP rookie guard' },
-  'maxime raynaud':            { team:'SAC', pts:14.8, reb:8.9, ast:1.8, stl:0.6, blk:1.4, three:0.6,  gp:61,  note:'SAC rookie center' },
-  'domar derozan':             { team:'SAC', pts:18.6, reb:4.1, ast:3.8, stl:0.8, blk:0.3, three:0.8,  gp:65,  note:'SAC veteran' },
-  'demar derozan':             { team:'SAC', pts:18.6, reb:4.1, ast:3.8, stl:0.8, blk:0.3, three:0.8,  gp:65,  note:'SAC veteran' },
-  'saddiq bey':                { team:'ATL', pts:14.8, reb:5.1, ast:2.1, stl:0.9, blk:0.4, three:2.4,  gp:58,  note:'ATL wing' },
-  'tari eason':                { team:'HOU', pts:12.8, reb:5.8, ast:1.4, stl:1.1, blk:0.8, three:1.4,  gp:62,  note:'HOU energy big' },
-  'cam thomas':                { team:'BKN', pts:21.2, reb:3.6, ast:2.2, stl:0.8, blk:0.3, three:2.1,  gp:68,  note:'BKN young scorer' },
-  'noah clowney':              { team:'BKN', pts:11.2, reb:6.9, ast:1.5, stl:0.9, blk:1.2, three:1.2,  gp:60,  note:'BKN big' },
-  'jonathan kuminga':          { team:'ATL', pts:17.9, reb:4.9, ast:2.9, stl:0.9, blk:0.6, three:1.4,  gp:58,  note:'ATL from GSW' },
-  'michael porter jr':         { team:'BKN', pts:24.2, reb:7.8, ast:2.1, stl:0.8, blk:0.6, three:3.1,  gp:52,  note:'BKN shooter' },
-  'kyrie irving':              { team:'DAL', pts:24.6, reb:4.9, ast:5.1, stl:1.3, blk:0.4, three:2.8,  gp:0,   note:'OUT — season-ending ACL' },
+  'shai gilgeous-alexander': { team:'OKC', pts:32.1, reb:5.1, ast:6.1, stl:2.0, blk:0.8, fg:'53.4%', three:'35.2%', gp:67, min:33.8, note:'MVP Frontrunner (-275)' },
+  'victor wembanyama':       { team:'SAS', pts:24.2, reb:10.2,ast:3.5, stl:1.8, blk:3.8, fg:'49.1%', three:'33.4%', gp:54, min:32.1, note:'MVP Candidate (+220)' },
+  'luka doncic':             { team:'LAL', pts:28.9, reb:8.4, ast:8.7, stl:1.3, blk:0.5, fg:'51.2%', three:'38.1%', gp:58, min:35.2, note:'SUSPENDED tonight vs CLE' },
+  'tyrese maxey':            { team:'PHI', pts:28.9, reb:3.9, ast:6.5, stl:0.9, blk:0.4, fg:'47.8%', three:'39.1%', gp:71, min:34.5, note:'4th in NBA scoring' },
+  'lebron james':            { team:'LAL', pts:25.3, reb:7.8, ast:8.2, stl:1.2, blk:0.6, fg:'52.1%', three:'37.8%', gp:61, min:34.1, note:'LAL vs CLE tonight — winner clinches' },
+  'donovan mitchell':        { team:'CLE', pts:27.9, reb:4.6, ast:5.8, stl:1.5, blk:0.4, fg:'48.3%', three:'37.9%', gp:68, min:34.2, note:'CLE @ LAL tonight — 34 pts vs UTA last night' },
+  'devin booker':            { team:'PHX', pts:25.4, reb:4.1, ast:6.0, stl:1.0, blk:0.3, fg:'49.8%', three:'37.2%', gp:66, min:33.8, note:'PHX @ ORL tonight' },
+  'jayson tatum':            { team:'BOS', pts:26.7, reb:8.2, ast:4.9, stl:1.1, blk:0.6, fg:'46.9%', three:'37.5%', gp:72, min:35.1, note:'BOS franchise player' },
+  'jaylen brown':            { team:'BOS', pts:22.8, reb:5.5, ast:3.9, stl:1.1, blk:0.4, fg:'47.2%', three:'35.8%', gp:70, min:33.2, note:'BOS co-star' },
+  'nikola jokic':            { team:'DEN', pts:26.4, reb:12.8,ast:9.2, stl:1.4, blk:0.8, fg:'57.8%', three:'35.1%', gp:65, min:34.5, note:'3-time MVP' },
+  'stephen curry':           { team:'GSW', pts:24.1, reb:4.3, ast:5.9, stl:1.2, blk:0.2, fg:'47.9%', three:'41.3%', gp:58, min:32.8, note:'Questionable (ankle)' },
+  'giannis antetokounmpo':   { team:'MIL', pts:30.2, reb:11.8,ast:5.7, stl:1.2, blk:1.1, fg:'57.4%', three:'28.1%', gp:67, min:34.9, note:'MIL @ DAL tonight' },
+  'kawhi leonard':           { team:'LAC', pts:24.8, reb:6.2, ast:3.8, stl:1.7, blk:0.5, fg:'51.8%', three:'39.2%', gp:48, min:31.2, note:'LAC @ POR tonight — career-high scoring season' },
+  'darius garland':          { team:'LAC', pts:21.1, reb:3.2, ast:7.8, stl:1.1, blk:0.2, fg:'50.6%', three:'51.2%', gp:11, min:32.1, note:'NOW ON LAC — traded from CLE for Harden' },
+  'james harden':            { team:'CLE', pts:22.5, reb:5.9, ast:7.5, stl:1.1, blk:0.4, fg:'48.1%', three:'47.0%', gp:66, min:33.1, note:'NOW ON CLE — CLE @ LAL tonight' },
+  'trae young':              { team:'WAS', pts:15.2, reb:3.0, ast:6.2, stl:0.9, blk:0.1, fg:'59.0%', three:'38.0%', gp:5,  min:20.8, note:'NOW ON WAS — traded from ATL Jan 2026' },
+  'anthony edwards':         { team:'MIN', pts:29.5, reb:5.3, ast:5.1, stl:1.5, blk:0.7, fg:'46.8%', three:'37.9%', gp:61, min:34.8, note:'Missed last 6 with knee injury — returned last night' },
+  'anthony davis':           { team:'WAS', pts:21.8, reb:10.2,ast:3.1, stl:1.2, blk:2.2, fg:'53.4%', three:'25.1%', gp:49, min:33.2, note:'NOW ON WAS — traded from DAL at deadline' },
+  'joel embiid':             { team:'PHI', pts:30.1, reb:11.2,ast:3.8, stl:0.8, blk:1.7, fg:'51.2%', three:'32.1%', gp:38, min:34.1, note:'Injury-riddled season' },
+  'bam adebayo':             { team:'MIA', pts:20.1, reb:9.9, ast:3.8, stl:1.1, blk:0.9, fg:'52.8%', three:'22.1%', gp:68, min:33.8, note:'MIA anchor' },
+  'klay thompson':           { team:'DAL', pts:16.2, reb:3.1, ast:2.4, stl:0.8, blk:0.3, fg:'45.8%', three:'40.1%', gp:58, min:29.8, note:'Elevated usage — Kyrie OUT all season' },
+  'austin reaves':           { team:'LAL', pts:23.6, reb:4.2, ast:5.8, stl:1.0, blk:0.3, fg:'48.9%', three:'40.2%', gp:69, min:34.1, note:'Leads LAL in scoring — big game tonight vs CLE' },
+  'cooper flagg':            { team:'DAL', pts:20.4, reb:6.6, ast:3.2, stl:1.1, blk:1.2, fg:'46.1%', three:'35.8%', gp:65, min:32.8, note:'Top rookie — MIL @ DAL tonight' },
+  'alperen sengun':          { team:'HOU', pts:21.2, reb:9.8, ast:4.8, stl:1.0, blk:1.3, fg:'53.1%', three:'28.9%', gp:70, min:32.4, note:'HOU @ NYK tonight' },
+  'kevin durant':            { team:'HOU', pts:24.8, reb:5.8, ast:4.2, stl:0.8, blk:1.1, fg:'52.9%', three:'41.2%', gp:62, min:33.8, note:'HOU @ NYK tonight' },
+  'tyler herro':             { team:'MIA', pts:21.8, reb:4.1, ast:5.2, stl:0.9, blk:0.2, fg:'46.8%', three:'38.9%', gp:67, min:33.2, note:'MIA secondary scorer' },
+  'norman powell':           { team:'MIA', pts:19.1, reb:2.8, ast:2.1, stl:0.8, blk:0.2, fg:'49.8%', three:'42.1%', gp:65, min:29.8, note:'NOW ON MIA — leads in 3PM' },
+  'lamelo ball':             { team:'CHA', pts:27.1, reb:5.9, ast:8.8, stl:1.4, blk:0.4, fg:'46.2%', three:'37.8%', gp:65, min:34.2, note:'CHA vs BKN tonight — 92.2% win prob' },
+  'jalen brunson':           { team:'NYK', pts:26.8, reb:3.7, ast:7.2, stl:1.0, blk:0.2, fg:'48.9%', three:'38.8%', gp:69, min:34.2, note:'NYK just clinched playoff spot — HOU @ NYK tonight' },
+  'mikal bridges':           { team:'NYK', pts:17.1, reb:4.2, ast:3.8, stl:1.1, blk:0.5, fg:'46.8%', three:'37.2%', gp:70, min:33.2, note:'NYK co-star' },
+  'dyson daniels':           { team:'ATL', pts:11.2, reb:4.8, ast:3.9, stl:2.8, blk:0.4, fg:'44.1%', three:'35.1%', gp:70, min:31.8, note:'Leads NBA in steals' },
+  'jalen johnson':           { team:'ATL', pts:20.8, reb:8.9, ast:4.2, stl:1.1, blk:0.8, fg:'51.2%', three:'34.8%', gp:68, min:33.1, note:'ATL new franchise cornerstone' },
+  'jonathan kuminga':        { team:'ATL', pts:17.9, reb:4.8, ast:2.8, stl:0.9, blk:0.6, fg:'52.1%', three:'35.8%', gp:38, min:28.9, note:'NOW ON ATL from GSW' },
+  'cade cunningham':         { team:'DET', pts:23.8, reb:5.1, ast:7.2, stl:1.3, blk:0.4, fg:'46.8%', three:'37.1%', gp:55, min:34.1, note:'OUT — collapsed lung injury' },
+  'evan mobley':             { team:'CLE', pts:18.8, reb:9.8, ast:3.1, stl:0.9, blk:1.8, fg:'54.1%', three:'34.8%', gp:70, min:33.8, note:'CLE @ LAL tonight — big boards spot' },
+  'paolo banchero':          { team:'ORL', pts:21.8, reb:6.4, ast:4.2, stl:1.0, blk:0.8, fg:'47.8%', three:'32.1%', gp:67, min:33.8, note:'ORL @ PHX tonight' },
+};
+
+// ── WIN PROBABILITY — derived live from spread/moneyline, no hardcoded games ──
+function spreadToProb(spreadStr) {
+  // Convert point spread to win probability
+  // Every point of spread ≈ 2.8% win probability shift from 50%
+  const m = String(spreadStr||'').match(/([+-]?\d+\.?\d*)/);
+  if (!m) return { home:50, away:50 };
+  const n = parseFloat(m[1]);
+  // Negative spread = home favored; positive = away favored
+  const edge = Math.min(Math.abs(n) * 2.8, 43); // cap at 93%
+  if (n < 0) return { home: Math.round(50+edge), away: Math.round(50-edge) };
+  return { home: Math.round(50-edge), away: Math.round(50+edge) };
+}
+
+function mlToProb(ml) {
+  if (!ml || ml === 0) return null;
+  if (ml < 0) return Math.round((-ml / (-ml + 100)) * 100);
+  return Math.round((100 / (ml + 100)) * 100);
+}
+
+function getWinProb(homeTeam, awayTeam, spread, rawHome, homeML, awayML) {
+  // 1. Use ESPN predictor if non-trivial
+  if (rawHome && rawHome > 5 && rawHome < 95 && rawHome !== 50) {
+    return { home: Math.round(rawHome), away: Math.round(100-rawHome) };
+  }
+  // 2. Derive from moneyline if available
+  if (homeML && awayML) {
+    const hp = mlToProb(homeML);
+    if (hp) return { home: hp, away: 100-hp };
+  }
+  // 3. Fall back to spread math
+  return spreadToProb(spread);
+}
+
+
+// ── ODDS API — event-by-event endpoint (required for player props on all plans) ──
+async function fetchOddsAPI() {
+  const KEY = process.env.ODDS_API_KEY;
+  if (!KEY) { console.log('⚠️  No ODDS_API_KEY set'); return; }
+  try {
+    // 7 core markets (credit-safe) — 7 × 1 region × 4/hr × 12hr × 30days = 10,080/month
+    const MARKETS = [
+      'player_points','player_rebounds','player_assists',
+      'player_threes','player_blocks','player_steals',
+      'player_points_rebounds_assists',
+      'player_points_rebounds','player_points_assists',
+      'player_double_double','player_rebounds_assists',
+    ].join(',');
+
+    // Step 1: get event IDs — free, no credits used
+    const eventsRes = await axios.get(
+      'https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey=' + KEY,
+      { timeout: 10000 }
+    );
+    const events = eventsRes.data || [];
+    const rem = eventsRes.headers['x-requests-remaining'] || '?';
+    console.log('📊 Odds API: ' + events.length + ' events | ' + rem + ' credits remaining');
+
+    if (!events.length) {
+      console.log('⚠️  No NBA events — lines not posted yet or season over');
+      return;
+    }
+
+    // Step 2: fetch props per event using EVENT endpoint (the only valid endpoint for player props)
+    // DO NOT use regions + bookmakers together — causes 422
+    const allGames = [];
+    for (const event of events) {
+      try {
+        const url = 'https://api.the-odds-api.com/v4/sports/basketball_nba/events/'
+          + event.id + '/odds'
+          + '?apiKey=' + KEY
+          + '&regions=us'
+          + '&markets=' + MARKETS
+          + '&oddsFormat=american';
+        const res = await axios.get(url, { timeout: 10000 });
+        if (res.data && res.data.bookmakers && res.data.bookmakers.length) {
+          allGames.push(res.data);
+        }
+      } catch(e) {
+        console.log('⚠️  Event ' + event.id + ': ' + (e.response ? e.response.status : e.message));
+      }
+    }
+    console.log('📊 Odds API: props for ' + allGames.length + '/' + events.length + ' games');
+    processOddsData(allGames);
+
+  } catch(e) {
+    console.error('❌ Odds API error:', e.message);
+    if (e.response) console.error('   Status:', e.response.status, JSON.stringify(e.response.data||'').slice(0,150));
+  }
+}
+
+
+// ALL IDs verified directly from nba.com/player/ID URLs
+const PHOTO_IDS = {
+  'Alexandre Sarr':'1642356',
+  'Alperen Sengun':'1630578',
+  'Amen Thompson':'1631110',
+  'Anfernee Simons':'1629014',
+  'Anthony Davis':'203076',
+  'Anthony Edwards':'1630162',
+  'Austin Reaves':'1630559',
+  'Bam Adebayo':'1628389',
+  'Bilal Coulibaly':'1641758',
+  'Bobby Portis':'1626187',
+  'Bojan Bogdanovic':'202711',
+  'Brook Lopez':'201572',
+  'C.J. McCollum':'203468',
+  'CJ McCollum':'203468',
+  'Cade Cunningham':'1630595',
+  'Chet Holmgren':'1631096',
+  'Coby White':'1629632',
+  'Collin Sexton':'1629012',
+  'Cooper Flagg':'1642843',
+  'Damian Lillard':'203081',
+  'Darius Garland':'1629636',
+  'De\'Aaron Fox':'1628368',
+  'DeAaron Fox':'1628368',
+  'DeMar DeRozan':'201942',
+  'Deni Avdija':'1630166',
+  'Desmond Bane':'1630217',
+  'Devin Booker':'1626164',
+  'Donovan Mitchell':'1628378',
+  'Draymond Green':'203110',
+  'Dyson Daniels':'1630700',
+  'Evan Mobley':'1630596',
+  'Franz Wagner':'1630532',
+  'Fred VanVleet':'2562551',
+  'Giannis Antetokounmpo':'203507',
+  'Grayson Allen':'1628960',
+  'Immanuel Quickley':'1630193',
+  'Ja Morant':'1629630',
+  'Jalen Brunson':'1628973',
+  'Jalen Green':'1630224',
+  'Jalen Johnson':'1630552',
+  'Jalen Suggs':'1630591',
+  'Jamal Murray':'1627750',
+  'James Harden':'201935',
+  'James Wiseman':'1630164',
+  'Jaylen Brown':'1627759',
+  'Jayson Tatum':'1628369',
+  'Jerami Grant':'203924',
+  'Jock Landale':'1629111',
+  'Joel Embiid':'203954',
+  'John Collins':'1628381',
+  'Jonathan Kuminga':'1630228',
+  'Jordan Clarkson':'203903',
+  'Jordan Poole':'1629673',
+  'Josh Giddey':'1630581',
+  'Josh Hart':'1628404',
+  'Jusuf Nurkic':'203994',
+  'Karl-Anthony Towns':'1626157',
+  'Kawhi Leonard':'202695',
+  'Kelly Oubre Jr':'1626162',
+  'Kevin Durant':'201142',
+  'Khris Middleton':'203114',
+  'Kyle Kuzma':'1628398',
+  'LaMelo Ball':'1630163',
+  'Lauri Markkanen':'1628374',
+  'LeBron James':'2544',
+  'Luka Doncic':'1629029',
+  'Matas Buzelis':'1642267',
+  'Mikal Bridges':'1628969',
+  'Nickeil Alexander-Walker':'1629638',
+  'Nikola Jokic':'203999',
+  'Nikola Vucevic':'202696',
+  'Norman Powell':'1626181',
+  'OG Anunoby':'1628384',
+  'Onyeka Okongwu':'1630168',
+  'Paolo Banchero':'1631094',
+  'Patrick Williams':'1630176',
+  'Paul George':'202331',
+  'RJ Barrett':'1629628',
+  'Scottie Barnes':'1630567',
+  'Shai Gilgeous-Alexander':'1628983',
+  'Stephen Curry':'201939',
+  'Tari Eason':'1631107',
+  'Tobias Harris':'202699',
+  'Trae Young':'1629027',
+  'Tristan da Silva':'1641783',
+  'Tyler Herro':'1629639',
+  'Tyrese Maxey':'1630178',
+  'Victor Wembanyama':'1641705',
+  'Walker Kessler':'1631117',
+  'Wendell Carter Jr':'1628976',
+  'Wendell Carter Jr.':'1628976',
+  'Zaccharie Risacher':'1642355',
+  'Zach LaVine':'203897',
+
+  'Julius Randle':'203944',
+  'Cody Williams':'1642262',
+  'Jakob Poeltl':'1627751',
+  'Jeremiah Fears':'1642847',
+  'Payton Pritchard':'1630202',
+  'Brice Sensabaugh':'1641729',
+  'Brandon Ingram':'1627742',
+  'Ayo Dosunmu':'1630245',
+  'Nicolas Claxton':'1629651',
+  'Nic Claxton':'1629651',
+  'Rudy Gobert':'203497',
+  'Derrick White':'1628401',
+  'Kyle Filipowski':'1642271',
+  'Myles Turner':'1626167',
+  'Donte DiVincenzo':'1628978',
+  'Naji Marshall':'1630230',
+  'Neemias Queta':'1629674',
+  'Zion Williamson':'1629627',
+  'Derik Queen':'1642852',
+  'Quentin Grimes':'1629656',
+  'Jabari Smith Jr':'1631095',
+  'Jabari Smith Jr.':'1631095',
+  'Reed Sheppard':'1641844',
+  'R.J. Barrett':'1629628',
+  'Devin Carter':'1642853',
+  'Saddiq Bey':'1630218',
+  'Taylor Hendricks':'1642269',
+  'Ziaire Williams':'1630533',
+  'Ousmane Dieng':'1631117',
+  'Nick Richards':'1630236',
+  'Kobe Brown':'1641843',
+  'Maxime Raynaud':'1642857',
+  'Ryan Rollins':'1631115',
+  'Dominick Barlow':'1631116',
+  'Brandon Williams':'1629753',
+  'Ja\'Kobe Walter':'1642270',
+  'JaKobe Walter':'1642270',
+  'Dylan Cardwell':'1642858',
+
+  'Pascal Siakam':'1627783',
+  'Tyrese Haliburton':'1630169',
+  'Andrew Nembhard':'1630596',
+  'Bennedict Mathurin':'1631119',
+  'Aaron Nesmith':'1630175',
+  'Tyrese Maxey':'1630178',
+  'Ben Sheppard':'1641825',
+  'Obi Toppin':'1630167',
+  'Jalen Williams':'1631112',
+  'Tre Jones':'1630170',
+  'Nikola Vucevic':'202696',
+  'Darius Garland':'1629636',
+  'Sam Merrill':'1630216',
+  'Tobias Harris':'202699',
+  'Kelly Oubre Jr':'1626162',
+  'Isaiah Hartenstein':'1628392',
+  'Miles McBride':'1630540',
+  'OG Anunoby':'1628384',
+  'Precious Achiuwa':'1630173',
+  'Immanuel Quickley':'1630193',
+
+  'Dylan Harper':'1642844',
+  'VJ Edgecombe':'1642845',
+  'Ace Bailey':'1642846',
+  'Tre Johnson':'1642848',
+  'Nolan Traore':'1642849',
+  'Kon Knueppel':'1642851',
+  'Egor Demin':'1642856',
+  'Walter Clayton Jr':'1642383',
+  'Scoot Henderson':'1641706',
 };
 
 // ── STAT TYPE MAP: which PLAYER_STATS field to use for each prop type ──
@@ -271,23 +492,46 @@ SEEDED_PROPS.forEach(p => {
     }
   }
 
-  // Fallback: always produce a visible projection based on tier + confidence
+  // Fallback: if no player stats found, use line + tier bump
   if (projected == null) {
     const base = parseFloat(p.dkLine || p.line || 0);
-    const conf  = p.confidence || 60;
-    // Map confidence to a bump: 80%+ conf = +8%, 70% = +5%, 60% = +3%, 50% = 0, <50 = negative
-    const confBump = ((conf - 50) / 100) * 0.16 * base;
-    // Tier adds directional bias
-    const tierBump = p.tier==='elite'?base*0.05:p.tier==='strong'?base*0.03:p.tier==='fade'?-base*0.04:0;
-    const raw = base + confBump + tierBump;
-    // Round to nearest 0.5, ensure minimum 0.5 difference from line for visibility
-    let proj = Math.round(raw * 2) / 2;
-    if (Math.abs(proj - base) < 0.5) proj = base + (p.tier==='fade' ? -0.5 : 0.5);
-    projected = proj;
+    const tMult = p.tier==='elite'?1.0:p.tier==='strong'?0.7:p.tier==='neutral'?0:p.tier==='fade'?-0.8:0;
+    projected = Math.round((base + tMult*0.04*base) * 2) / 2;
   }
 
   p.projectedLine = projected;
+
+  // Attach raw season avg for frontend display
+  if (playerStat) {
+    const st = p.statType || '';
+    if (st === 'points')   p.seasonAvg = playerStat.pts;
+    else if (st === 'rebounds') p.seasonAvg = playerStat.reb;
+    else if (st === 'assists')  p.seasonAvg = playerStat.ast;
+    else if (st === 'steals')   p.seasonAvg = playerStat.stl;
+    else if (st === 'blocks')   p.seasonAvg = playerStat.blk;
+    else if (st === 'Pts+Reb+Ast' || st === 'points_rebounds_assists') p.seasonAvg = parseFloat((playerStat.pts + playerStat.reb + playerStat.ast).toFixed(1));
+    else if (st === 'Pts+Reb' || st === 'points_rebounds') p.seasonAvg = parseFloat((playerStat.pts + playerStat.reb).toFixed(1));
+    else if (st === 'Pts+Ast' || st === 'points_assists') p.seasonAvg = parseFloat((playerStat.pts + playerStat.ast).toFixed(1));
+    else if (st === 'Reb+Ast' || st === 'rebounds_assists') p.seasonAvg = parseFloat((playerStat.reb + playerStat.ast).toFixed(1));
+  }
 });
+
+function lookupSeasonAvg(playerName, statType) {
+  const nameKey = (playerName||'').toLowerCase();
+  const ps = PLAYER_STATS[nameKey];
+  if (!ps) return null;
+  const st = (statType||'').toLowerCase().replace(/\s/g,'_');
+  if (st === 'points') return ps.pts;
+  if (st === 'rebounds') return ps.reb;
+  if (st === 'assists') return ps.ast;
+  if (st === 'steals') return ps.stl;
+  if (st === 'blocks') return ps.blk;
+  if (st === 'pts+reb+ast' || st === 'points_rebounds_assists') return parseFloat((ps.pts + ps.reb + ps.ast).toFixed(1));
+  if (st === 'pts+reb' || st === 'points_rebounds') return parseFloat((ps.pts + ps.reb).toFixed(1));
+  if (st === 'pts+ast' || st === 'points_assists') return parseFloat((ps.pts + ps.ast).toFixed(1));
+  if (st === 'reb+ast' || st === 'rebounds_assists') return parseFloat((ps.reb + ps.ast).toFixed(1));
+  return null;
+}
 
 function processOddsData(games) {
   // Build gameId -> teams map from Odds API game data
@@ -423,6 +667,7 @@ function processOddsData(games) {
       rebetLine: ml, rebetOdds: dko,
       altLines: buildAltLines(ml, dko),
       date: p.date,
+      seasonAvg: lookupSeasonAvg(p.playerName, p.statType),
     });
   }
 
@@ -537,14 +782,15 @@ app.get('/api/props', (req,res) => {
   // Add projected line to any props missing it
   rawProps.forEach(p => {
     if (p.projectedLine == null) {
-      const base  = parseFloat(p.dkLine || p.line || 0);
+      const base = parseFloat(p.dkLine || p.line || 0);
       const conf  = p.confidence || 55;
-      const confBump = ((conf - 50) / 100) * 0.16 * base;
       const tier  = p.tier || 'neutral';
-      const tierBump = tier==='elite'?base*0.05:tier==='strong'?base*0.03:tier==='fade'?-base*0.04:0;
-      let proj = Math.round((base + confBump + tierBump) * 2) / 2;
-      if (Math.abs(proj - base) < 0.5) proj = base + (tier==='fade' ? -0.5 : 0.5);
-      p.projectedLine = proj;
+      const tMult = tier==='elite'?1.0:tier==='strong'?0.7:tier==='neutral'?0:tier==='fade'?-0.8:0;
+      const bump  = tMult * (0.03+((conf-50)/100)*0.05) * base;
+      p.projectedLine = Math.round((base+bump)*2)/2;
+    }
+    if (p.seasonAvg == null) {
+      p.seasonAvg = lookupSeasonAvg(p.playerName, p.statType);
     }
   });
   let props = [...rawProps].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
@@ -795,17 +1041,6 @@ app.get('/api/nba/career', async (req,res) => {
     }});
     res.json({success:true, data});
   } catch(e){ res.status(500).json({success:false,error:e.message}); }
-});
-
-app.get('/api/debug/proj',(req,res)=>{
-  const sample = [...SEEDED_PROPS].slice(0,5).map(p=>({
-    name: p.playerName,
-    stat: p.statType,
-    line: p.dkLine,
-    projected: p.projectedLine,
-    diff: p.projectedLine != null ? (p.projectedLine - p.dkLine).toFixed(1) : 'null'
-  }));
-  res.json({sample});
 });
 
 app.get('/api/health',(req,res)=>res.json({status:'ok',time:new Date().toISOString(),games:store.games.length,injuries:store.injuries.length,liveProps:store.liveProps.length,source:store.liveProps.length>0?'Odds API (LIVE)':'Seeded (hardcoded)'}));
