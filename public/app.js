@@ -167,25 +167,74 @@ function buildPropCard(p) {
   var booksHtml = '<div class="books7">';
   bookLines.forEach(function(b) {
     var isBest = b.line != null && b.line === bestLine && p.direction === 'over';
-    booksHtml += '<div class="bk'+(isBest?' best-line':'')+'"><div class="bkname '+b.key+'">'+b.name+'</div><div class="bknum">'+(b.line!=null?b.line:'--')+'</div><div class="bkodds">'+(b.odds||'--')+'</div></div>';
+    var implPct = calcImplied(b.odds);
+    booksHtml += '<div class="bk'+(isBest?' best-line':'')+'"><div class="bkname '+b.key+'">'+b.name+'</div><div class="bknum">'+(b.line!=null?b.line:'--')+'</div><div class="bkodds">'+(b.odds||'--')+'</div>'
+      + (b.odds && b.odds !== 'More' ? '<div class="bk-impl">'+implPct+'%</div>' : '')
+      + '</div>';
   });
   booksHtml += '</div>';
 
-  // Projected line
+  // ── PROJECTION + EDGE SECTION ──
   var projHtml = '';
-  if (p.projectedLine != null) {
-    var baseL = parseFloat(p.dkLine||p.line||0);
-    var projL = parseFloat(p.projectedLine);
+  var baseL = parseFloat(p.dkLine||p.line||0);
+  var projL = p.projectedLine != null ? parseFloat(p.projectedLine) : null;
+  var seasonAvg = p.seasonAvg || null;
+
+  if (projL != null) {
     var diffV = projL - baseL;
     var projCls = diffV > 0 ? 'proj-over' : diffV < 0 ? 'proj-under' : '';
     var arrow   = diffV > 0 ? '▲ +' : diffV < 0 ? '▼ ' : '→ ';
     var absDiff = Math.abs(diffV).toFixed(1);
+    var edgePct = baseL > 0 ? ((diffV / baseL) * 100).toFixed(1) : '0.0';
+    var edgeSign = diffV > 0 ? '+' : '';
+
     projHtml = '<div class="proj-line-row">'
-      + '<span class="proj-lbl">📊 BeepBot Projection</span>'
+      + '<span class="proj-lbl">📊 Projection</span>'
       + '<span class="proj-val '+projCls+'">'+projL+'</span>'
-      + '<span class="proj-diff '+projCls+'">'+arrow+absDiff+' vs line</span>'
+      + '<span class="proj-diff '+projCls+'">'+arrow+absDiff+'</span>'
+      + '<span class="proj-edge '+projCls+'">'+edgeSign+edgePct+'% edge</span>'
       + '</div>';
   }
+
+  // ── SEASON AVG ROW ──
+  var avgHtml = '';
+  if (seasonAvg != null) {
+    var avgDiff = seasonAvg - baseL;
+    var avgCls = avgDiff > 0 ? 'proj-over' : avgDiff < 0 ? 'proj-under' : '';
+    avgHtml = '<div class="season-avg-row">'
+      + '<span class="avg-lbl">📈 Season Avg</span>'
+      + '<span class="avg-val '+avgCls+'">'+seasonAvg+'</span>'
+      + '<span class="avg-diff '+avgCls+'">'+(avgDiff>0?'▲ +':'▼ ')+Math.abs(avgDiff).toFixed(1)+' vs line</span>'
+      + '</div>';
+  }
+
+  // ── PROBABILITY SECTION ──
+  var mainOdds = p.dkOdds || p.fdOdds || '';
+  var overImpl  = calcImplied(mainOdds);
+  var underImpl = 100 - parseInt(overImpl);
+  var fairOver  = calcFairOdds(parseInt(overImpl));
+  var fairUnder = calcFairOdds(underImpl);
+
+  var probHtml = '<div class="prob-section">'
+    + '<div class="prob-header">Probability</div>'
+    + '<div class="prob-bars">'
+      + '<div class="prob-item over-prob">'
+        + '<span class="prob-side">OVER</span>'
+        + '<div class="prob-meter"><div class="prob-fill over-fill" style="width:'+overImpl+'%"></div></div>'
+        + '<span class="prob-pct over-pct">'+overImpl+'%</span>'
+        + '<span class="prob-fair">'+fairOver+'</span>'
+      + '</div>'
+      + '<div class="prob-item under-prob">'
+        + '<span class="prob-side">UNDER</span>'
+        + '<div class="prob-meter"><div class="prob-fill under-fill" style="width:'+underImpl+'%"></div></div>'
+        + '<span class="prob-pct under-pct">'+underImpl+'%</span>'
+        + '<span class="prob-fair">'+fairUnder+'</span>'
+      + '</div>'
+    + '</div>'
+  + '</div>';
+
+  // ── NBA ID BADGE ──
+  var nbaIdHtml = '<div class="nba-id-badge">ID: '+pid+'</div>';
 
   var pickId  = (pid+'_'+p.statType+'_'+(p.team||'')).replace(/[^a-z0-9_]/gi,'_');
   var safeLabel = esc(p.playerName+' '+cap(p.statType)+' '+(p.direction||'over').toUpperCase()+' '+(p.line||p.dkLine||'?'));
@@ -195,13 +244,15 @@ function buildPropCard(p) {
   return '<div class="prop-card '+t+'" data-type="'+p.statType+'" data-tier="'+t+'" data-player="'+(p.playerName||'').toLowerCase()+'" data-team="'+(p.team||'').toLowerCase()+'_'+(p.opponent||'').toLowerCase()+'">'
     + '<div class="pp-head">'
       + '<div class="av"><img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+pid+'.png" onerror="this.style.display=\'none\'"></div>'
-      + '<div class="pinfo"><div class="pname">'+p.playerName+'</div><div class="pteam">'+(p.team||'')+(p.opponent?' · vs '+p.opponent:'')+'</div></div>'
+      + '<div class="pinfo"><div class="pname">'+p.playerName+'</div><div class="pteam">'+(p.team||'')+(p.opponent?' · vs '+p.opponent:'')+' '+nbaIdHtml+'</div></div>'
       + '<div class="cr"><svg width="36" height="36" viewBox="0 0 36 36"><circle cx="18" cy="18" r="14" fill="none" stroke="#1a1a2e" stroke-width="4"/><circle cx="18" cy="18" r="14" fill="none" stroke="'+rc+'" stroke-width="4" stroke-dasharray="'+da+' '+(88-da)+'" stroke-linecap="round"/></svg><div class="ct">'+conf+'%</div></div>'
     + '</div>'
     + '<div class="pp-body">'
       + '<div class="ps-lbl">'+cap(p.statType)+' · '+t.toUpperCase()+' PICK</div>'
       + '<div class="pline-row"><span class="stat-num">'+(p.line||p.dkLine||'?')+'</span><span class="ou '+(p.direction||'over')+'">'+(p.direction||'over').toUpperCase()+'</span></div>'
+      + avgHtml
       + projHtml
+      + probHtml
       + booksHtml
       + '<div class="pp-foot"><div class="hr">L10: <span>'+(p.hitRateLast10||'?/10')+'</span></div><span class="badge b-'+t+'">'+t.toUpperCase()+'</span></div>'
       + (p.reasoning?'<div class="reason-text">'+p.reasoning+'</div>':'')
@@ -213,31 +264,52 @@ function buildPropCard(p) {
   + '</div>';
 }
 
+// ── FAIR ODDS CALCULATOR ──
+function calcFairOdds(impliedPct) {
+  var p = parseInt(impliedPct) || 50;
+  if (p <= 0) p = 1; if (p >= 100) p = 99;
+  if (p >= 50) {
+    return '-' + Math.round((p / (100 - p)) * 100);
+  } else {
+    return '+' + Math.round(((100 - p) / p) * 100);
+  }
+}
+
 // ── ALT LINES ────────────────────────────────────
 function renderAltLines(props) {
   if (!props.length) { var e=document.getElementById('altlines-content'); if(e)e.innerHTML='<div class="err-box"><h3>No Alt Lines</h3></div>'; return; }
-  var _altFilter = 'all';
   var html = '';
   props.forEach(function(p) {
     var pid  = p.nbaPhotoId || '0';
     var alts = p.altLines || [];
     var mainLine = p.dkLine || p.line || 0;
+    var mainOdds = p.dkOdds || '-110';
+
     html += '<div class="alt-card" data-type="'+p.statType+'">'
       + '<div class="alt-head">'
         + '<img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+pid+'.png" onerror="this.style.display=\'none\'" style="width:36px;height:36px;border-radius:50%;object-fit:cover">'
-        + '<div><div class="pname" style="font-size:12px">'+p.playerName+'</div><div class="pteam" style="font-size:10px">'+cap(p.statType)+'</div></div>'
-        + '<div style="margin-left:auto;font-size:13px;font-weight:700;color:var(--gold)">'+mainLine+'</div>'
+        + '<div><div class="pname" style="font-size:12px">'+p.playerName+'</div><div class="pteam" style="font-size:10px">'+cap(p.statType)+' · '+(p.team||'')+' vs '+(p.opponent||'')+'</div></div>'
+        + '<div style="margin-left:auto;text-align:right">'
+          + '<div style="font-size:13px;font-weight:700;color:var(--gold)">'+mainLine+'</div>'
+          + '<div style="font-size:9px;color:var(--muted)">ID: '+pid+'</div>'
+        + '</div>'
       + '</div>'
-      + '<div class="alt-lines-grid">'
+      + '<div class="alt-lines-table-wrap"><table class="alt-lines-table">'
+        + '<thead><tr><th>Line</th><th class="over-col">Over Odds</th><th class="over-col">Over %</th><th class="under-col">Under Odds</th><th class="under-col">Under %</th></tr></thead>'
+        + '<tbody>'
       + alts.map(function(a){
           var isMain = a.line === mainLine;
-          return '<div class="alt-row'+(isMain?' main-line':'')+'">'
-            +'<span class="alt-num">'+a.line+'</span>'
-            +'<span class="alt-odds over">'+a.overOdds+'</span>'
-            +'<span class="alt-odds under">'+a.underOdds+'</span>'
-          +'</div>';
+          var overPct  = calcImplied(a.overOdds);
+          var underPct = calcImplied(a.underOdds);
+          return '<tr class="'+(isMain?'main-line':'')+'">'
+            +'<td class="alt-line-num">'+a.line+(isMain?' <span class="alt-tag main">MAIN</span>':'')+'</td>'
+            +'<td class="alt-odds over-cell">'+a.overOdds+'</td>'
+            +'<td class="alt-prob over-cell">'+overPct+'%</td>'
+            +'<td class="alt-odds under-cell">'+a.underOdds+'</td>'
+            +'<td class="alt-prob under-cell">'+underPct+'%</td>'
+          +'</tr>';
         }).join('')
-      + '</div>'
+      + '</tbody></table></div>'
     + '</div>';
   });
   var el = document.getElementById('altlines-content');
