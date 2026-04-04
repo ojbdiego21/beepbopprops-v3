@@ -54,7 +54,7 @@ function populateH2H() {
   });
 }
 
-async function loadAllData() {
+async async function loadAllData() {
   var btn = document.getElementById('refresh-btn');
   btn.disabled = true; btn.classList.add('loading');
   await Promise.allSettled([loadGames(), loadProps(), loadInjuries(), loadLive(), loadParlays()]);
@@ -503,7 +503,7 @@ function updateCalc(prefix) {
 }
 
 // ── FIX: AI analyze sends real pick data ──────────
-async // ── BANKROLL / PAYROLL SYSTEM ──
+// ── BANKROLL / PAYROLL SYSTEM ──
 var bankrollAmount = parseFloat(localStorage.getItem('bbp_bankroll') || '0');
 
 function setBankroll(val) {
@@ -572,7 +572,7 @@ function slipProbability(slip) {
   return Math.round(p * 100);
 }
 
-function analyzeSlip(prefix) {
+async function analyzeSlip(prefix) {
   prefix = prefix || '';
   if(!slipPicks.length){showToast('Add picks first!');return;}
 
@@ -654,7 +654,7 @@ function showTab(id,el){
     // All other tabs: full width, hide side slip, show mini badge in header
     if (layout) layout.style.gridTemplateColumns = '1fr';
     if (slip) slip.style.display = 'none';
-    var count = (window.pickSlip || []).length;
+    var count = (slipPicks || []).length;
     if (miniSlip) {
       miniSlip.style.display = count > 0 ? 'flex' : 'none';
       var badge = document.getElementById('mini-slip-count');
