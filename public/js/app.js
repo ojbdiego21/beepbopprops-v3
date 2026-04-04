@@ -180,6 +180,7 @@ function buildPropCard(p) {
     + '<div class="pp-body">'
       + '<div class="ps-lbl">'+cap(p.statType)+' · '+t.toUpperCase()+' PICK</div>'
       + '<div class="pline-row"><span class="stat-num">'+(p.line||p.dkLine||'?')+'</span><span class="ou '+(p.direction||'over')+'">'+(p.direction||'over').toUpperCase()+'</span></div>'
+      + (p.projectedLine != null ? '<div class="proj-line-row"><span class="proj-lbl">📊 Projected</span><span class="proj-val '+(parseFloat(p.projectedLine) > parseFloat(p.dkLine||p.line||0) ? 'proj-over' : 'proj-under')+'">'+p.projectedLine+'</span><span class="proj-diff">'+(parseFloat(p.projectedLine) > parseFloat(p.dkLine||p.line||0) ? '▲ +' : '▼ ')+(Math.abs(parseFloat(p.projectedLine) - parseFloat(p.dkLine||p.line||0)).toFixed(1))+'</span></div>' : '')
       + booksHtml
       + '<div class="pp-foot"><div class="hr">L10: <span>'+(p.hitRateLast10||'?/10')+'</span></div><span class="badge b-'+t+'">'+t.toUpperCase()+'</span></div>'
       + (p.reasoning ? '<div class="reason-text">'+p.reasoning+'</div>' : '')
@@ -488,7 +489,76 @@ function updateCalc(prefix) {
 }
 
 // ── FIX: AI analyze sends real pick data ──────────
-async function analyzeSlip(prefix) {
+async // ── BANKROLL / PAYROLL SYSTEM ──
+var bankrollAmount = parseFloat(localStorage.getItem('bbp_bankroll') || '0');
+
+function setBankroll(val) {
+  bankrollAmount = parseFloat(val) || 0;
+  localStorage.setItem('bbp_bankroll', bankrollAmount);
+  updateBankrollUI();
+}
+
+function updateBankrollUI() {
+  var br = bankrollAmount;
+  if (!br || br <= 0) return;
+  var slip = window._currentSlip || [];
+  var pct = slipProbability(slip);
+
+  // Kelly criterion bet sizing (fractional Kelly at 25% for safety)
+  // Full Kelly = (p*b - q) / b where b = decimal odds - 1
+  // We simplify: bet 1-4% of bankroll based on combined confidence
+  var betPct, betLabel, rationale;
+  if (pct >= 70) {
+    betPct = 0.04; betLabel = '4% (Strong Edge)'; rationale = 'High confidence — full unit';
+  } else if (pct >= 60) {
+    betPct = 0.03; betLabel = '3% (Moderate Edge)'; rationale = 'Solid play — standard unit';
+  } else if (pct >= 50) {
+    betPct = 0.02; betLabel = '2% (Lean)'; rationale = 'Slight edge — half unit';
+  } else if (pct >= 35) {
+    betPct = 0.01; betLabel = '1% (Parlay Risk)'; rationale = 'Low prob parlay — min unit';
+  } else {
+    betPct = 0; betLabel = 'Skip'; rationale = 'Below threshold — do not bet';
+  }
+
+  var suggestedBet = Math.max(1, Math.round(br * betPct * 100) / 100);
+  var legs = slip.length;
+
+  // Parlay suggestions based on bankroll size
+  var parlayTiers = [];
+  if (br >= 100) {
+    parlayTiers.push({ legs:2, bet: Math.round(br*0.03), label:'2-Leg · 3% stake' });
+    parlayTiers.push({ legs:3, bet: Math.round(br*0.02), label:'3-Leg · 2% stake' });
+    if (br >= 500) parlayTiers.push({ legs:4, bet: Math.round(br*0.01), label:'4-Leg · 1% stake (lottery)' });
+  } else if (br >= 20) {
+    parlayTiers.push({ legs:2, bet: Math.max(1, Math.round(br*0.05)), label:'2-Leg · 5% stake' });
+    parlayTiers.push({ legs:3, bet: Math.max(1, Math.round(br*0.02)), label:'3-Leg · 2% stake' });
+  } else {
+    parlayTiers.push({ legs:2, bet: Math.max(1, Math.round(br*0.1)), label:'2-Leg · 10% stake (micro)' });
+  }
+
+  var el = document.getElementById('bankroll-recommendation');
+  if (!el) return;
+
+  var parlayHtml = parlayTiers.map(function(t) {
+    return '<div class="br-parlay-row"><span class="br-legs">'+t.legs+'-Leg Parlay</span><span class="br-bet">$'+t.bet+' · '+t.label+'</span></div>';
+  }).join('');
+
+  el.innerHTML = '<div class="br-box">'
+    + '<div class="br-title">💰 Bankroll: $'+br.toFixed(0)+'</div>'
+    + (pct > 0 ? '<div class="br-rec"><div class="br-rec-lbl">Current Slip ('+legs+' leg'+(legs!==1?'s':'')+' · '+pct+'%)</div>'
+      + '<div class="br-bet-main">Bet $<strong>'+suggestedBet.toFixed(0)+'</strong> · '+betLabel+'</div>'
+      + '<div class="br-rationale">'+rationale+'</div></div>' : '')
+    + '<div class="br-parlays"><div class="br-parlays-title">📋 Suggested Stakes by Leg Count</div>'+parlayHtml+'</div>'
+    + '</div>';
+}
+
+function slipProbability(slip) {
+  if (!slip || !slip.length) return 0;
+  var p = slip.reduce(function(acc, pick) { return acc * ((pick.conf||60)/100); }, 1);
+  return Math.round(p * 100);
+}
+
+function analyzeSlip(prefix) {
   prefix = prefix || '';
   if(!slipPicks.length){showToast('Add picks first!');return;}
 

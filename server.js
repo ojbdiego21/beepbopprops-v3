@@ -142,7 +142,16 @@ const SEEDED_PROPS = [
     hitRateLast10:'3/10', nbaPhotoId:'1641749', reasoning:'FADE OVER — BKN 7.8% win prob vs CHA. BKN players score less in blowout losses. Fade all BKN props.' },
 ];
 
-SEEDED_PROPS.forEach(p => { p.altLines = buildAltLines(p.dkLine, p.dkOdds); });
+SEEDED_PROPS.forEach(p => {
+  p.altLines = buildAltLines(p.dkLine, p.dkOdds);
+  // Generate projected line: confidence-adjusted vs book line
+  // High confidence = projection above line; low = below
+  const base = parseFloat(p.dkLine || p.line || 0);
+  const bias = p.direction === 'over' ? 1 : -1;
+  const conf = p.confidence || 60;
+  const bump = bias * ((conf - 50) / 100) * base * 0.12;
+  p.projectedLine = Math.round((base + bump) * 10) / 10;
+});
 
 // ── PLAYER STATS DATABASE ──
 const PLAYER_STATS = {
@@ -184,29 +193,37 @@ const PLAYER_STATS = {
   'paolo banchero':          { team:'ORL', pts:21.8, reb:6.4, ast:4.2, stl:1.0, blk:0.8, fg:'47.8%', three:'32.1%', gp:67, min:33.8, note:'ORL @ PHX tonight' },
 };
 
-// ── WIN PROBABILITIES (March 31 2026) ──
-const KNOWN_PROBS = {
-  'PHX_ORL':{ home:54, away:46 }, 'ORL_PHX':{ home:46, away:54 },
-  'CHA_BKN':{ home:92, away:8  }, 'BKN_CHA':{ home:8,  away:92 },
-  'DAL_MIL':{ home:46, away:54 }, 'MIL_DAL':{ home:54, away:46 },
-  'DET_TOR':{ home:41, away:59 }, 'TOR_DET':{ home:59, away:41 },
-  'NYK_HOU':{ home:51, away:49 }, 'HOU_NYK':{ home:49, away:51 },
-  'CLE_LAL':{ home:46, away:54 }, 'LAL_CLE':{ home:54, away:46 },
-  'POR_LAC':{ home:33, away:67 }, 'LAC_POR':{ home:67, away:33 },
-};
+// ── WIN PROBABILITY — derived live from spread/moneyline, no hardcoded games ──
+function spreadToProb(spreadStr) {
+  // Convert point spread to win probability
+  // Every point of spread ≈ 2.8% win probability shift from 50%
+  const m = String(spreadStr||'').match(/([+-]?\d+\.?\d*)/);
+  if (!m) return { home:50, away:50 };
+  const n = parseFloat(m[1]);
+  // Negative spread = home favored; positive = away favored
+  const edge = Math.min(Math.abs(n) * 2.8, 43); // cap at 93%
+  if (n < 0) return { home: Math.round(50+edge), away: Math.round(50-edge) };
+  return { home: Math.round(50-edge), away: Math.round(50+edge) };
+}
 
-function getWinProb(homeTeam, awayTeam, spread, rawHome) {
-  const k1 = homeTeam+'_'+awayTeam;
-  const k2 = awayTeam+'_'+homeTeam;
-  if (KNOWN_PROBS[k1]) return { home:KNOWN_PROBS[k1].home, away:KNOWN_PROBS[k1].away };
-  if (KNOWN_PROBS[k2]) return { home:KNOWN_PROBS[k2].away, away:KNOWN_PROBS[k2].home };
-  if (rawHome && rawHome !== 50) return { home:Math.round(rawHome), away:Math.round(100-rawHome) };
-  const m = String(spread||'').match(/([+-]?\d+\.?\d*)/);
-  if (m) {
-    const n=parseFloat(m[1]), e=Math.abs(n)*2.8, f=Math.min(50+e,93);
-    return n<0?{home:Math.round(f),away:Math.round(100-f)}:{home:Math.round(100-f),away:Math.round(f)};
+function mlToProb(ml) {
+  if (!ml || ml === 0) return null;
+  if (ml < 0) return Math.round((-ml / (-ml + 100)) * 100);
+  return Math.round((100 / (ml + 100)) * 100);
+}
+
+function getWinProb(homeTeam, awayTeam, spread, rawHome, homeML, awayML) {
+  // 1. Use ESPN predictor if non-trivial
+  if (rawHome && rawHome > 5 && rawHome < 95 && rawHome !== 50) {
+    return { home: Math.round(rawHome), away: Math.round(100-rawHome) };
   }
-  return {home:50,away:50};
+  // 2. Derive from moneyline if available
+  if (homeML && awayML) {
+    const hp = mlToProb(homeML);
+    if (hp) return { home: hp, away: 100-hp };
+  }
+  // 3. Fall back to spread math
+  return spreadToProb(spread);
 }
 
 
@@ -596,6 +613,8 @@ async function fetchESPN() {
         tipoff:new Date(ev.date).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZone:'America/New_York'})+' ET',
         arena:comp.venue?.fullName||'', spread:odds.details||'Pick', total:odds.overUnder?String(odds.overUnder):'N/A',
         homeWinProb:comp.predictor?.homeTeam?.gameProjection||50,
+        homeML: odds.homeTeamOdds?.moneyLine || null,
+        awayML: odds.awayTeamOdds?.moneyLine || null,
       };
     });
     console.log('✅ ESPN: '+store.games.length+' games');
@@ -660,8 +679,8 @@ async function fetchESPN() {
 // GAMES
 app.get('/api/games', (req,res) => {
   const games = store.games.map(g => {
-    const rawH = g.homeWinProb||50;
-    const hp = Math.round(rawH), ap = 100-hp;
+    const p = getWinProb(g.homeTeam, g.awayTeam, g.spread, g.homeWinProb, g.homeML, g.awayML);
+    const hp = p.home, ap = p.away;
     const gap = Math.abs(hp-50);
     const tier = gap>=35?'elite':gap>=20?'strong':gap>=8?'neutral':'fade';
     const fav = hp>50?g.homeTeam:g.awayTeam;

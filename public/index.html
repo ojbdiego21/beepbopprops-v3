@@ -226,6 +226,15 @@
         </div>
       </div>
       <div id="slip-body-collapsible">
+        <!-- Bankroll input -->
+        <div class="br-input-row">
+          <span class="br-input-lbl">💰 My Bankroll</span>
+          <span style="color:var(--muted);font-size:11px">$</span>
+          <input type="number" id="bankroll-input" class="br-input" placeholder="500" min="1" step="1"
+            oninput="setBankroll(this.value)" />
+        </div>
+        <!-- Bankroll recommendation — updates when picks added -->
+        <div id="bankroll-recommendation" style="padding:0 10px 4px"></div>
         <div style="padding:10px">
           <div id="slip-empty" style="text-align:center;padding:20px 8px;color:var(--muted);font-size:12px">
             <span style="font-size:28px;display:block;margin-bottom:8px;opacity:.3">🕸️</span>

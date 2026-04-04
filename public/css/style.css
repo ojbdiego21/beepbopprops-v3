@@ -1298,3 +1298,29 @@ body.props-tab-active { padding-bottom:70px; }
 .sm-ai-label { font-size:9px; font-weight:700; color:var(--red); letter-spacing:.5px; margin-bottom:8px; }
 .sm-ai-body { font-size:13px; color:var(--txt); line-height:1.8; }
 .sm-ai-body br + br { display:block; margin:4px 0; }
+
+/* ── PROJECTED LINE ON PROP CARDS ── */
+.proj-line-row{display:flex;align-items:center;gap:6px;padding:4px 0 6px;border-top:1px solid rgba(255,255,255,.06);margin-top:4px;}
+.proj-lbl{font-size:9px;color:var(--muted);font-weight:600;letter-spacing:.3px;}
+.proj-val{font-size:14px;font-weight:700;}
+.proj-over{color:#22c55e;}
+.proj-under{color:var(--red);}
+.proj-diff{font-size:10px;color:var(--muted);margin-left:auto;}
+
+/* ── BANKROLL SYSTEM ── */
+.br-input-row{display:flex;align-items:center;gap:6px;padding:10px 12px 6px;border-bottom:1px solid var(--bord);}
+.br-input-lbl{font-size:11px;font-weight:700;color:var(--gold);white-space:nowrap;}
+.br-input{background:rgba(255,255,255,.06);border:1px solid var(--bord);border-radius:6px;color:var(--txt);font-size:13px;font-weight:700;padding:4px 8px;width:90px;outline:none;}
+.br-input:focus{border-color:var(--gold);}
+.br-box{background:rgba(255,215,0,.04);border:1px solid rgba(255,215,0,.15);border-radius:8px;padding:10px 12px;margin:0 0 4px;}
+.br-title{font-size:10px;font-weight:700;color:var(--gold);letter-spacing:.5px;margin-bottom:8px;}
+.br-rec{margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06);}
+.br-rec-lbl{font-size:9px;color:var(--muted);margin-bottom:4px;}
+.br-bet-main{font-size:13px;color:var(--txt);font-weight:600;}
+.br-bet-main strong{color:#22c55e;font-size:16px;}
+.br-rationale{font-size:10px;color:var(--muted);margin-top:2px;}
+.br-parlays-title{font-size:9px;color:var(--muted);font-weight:600;letter-spacing:.3px;margin-bottom:6px;}
+.br-parlay-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.br-parlay-row:last-child{border-bottom:none;}
+.br-legs{font-size:11px;font-weight:700;color:var(--txt);}
+.br-bet{font-size:10px;color:var(--muted);}
