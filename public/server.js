@@ -144,18 +144,13 @@ const SEEDED_PROPS = [
 
 SEEDED_PROPS.forEach(p => {
   p.altLines = buildAltLines(p.dkLine, p.dkOdds);
-  // Projected line — what BeepBot thinks the true number should be
-  // Based on confidence, tier, and stat type
+  // Generate projected line: confidence-adjusted vs book line
+  // High confidence = projection above line; low = below
   const base = parseFloat(p.dkLine || p.line || 0);
+  const bias = p.direction === 'over' ? 1 : -1;
   const conf = p.confidence || 60;
-  // Tier multiplier: elite props project higher, fade props project lower
-  const tierMult = p.tier==='elite'?1.0:p.tier==='strong'?0.7:p.tier==='neutral'?0:p.tier==='fade'?-0.8:-0.3;
-  // Base bump: 3-8% of the line depending on confidence
-  const bumpPct = 0.03 + ((conf-50)/100) * 0.05;
-  const bump = tierMult * bumpPct * base;
-  // Round to nearest 0.5
-  const raw = base + bump;
-  p.projectedLine = Math.round(raw * 2) / 2;
+  const bump = bias * ((conf - 50) / 100) * base * 0.12;
+  p.projectedLine = Math.round((base + bump) * 10) / 10;
 });
 
 // ── PLAYER STATS DATABASE ──
@@ -700,19 +695,8 @@ app.get('/api/games', (req,res) => {
 // PROPS — live from Odds API, fallback to seeded
 app.get('/api/props', (req,res) => {
   const tOrd={elite:0,strong:1,neutral:2,fade:3};
-  let rawProps = store.liveProps.length > 0 ? store.liveProps : [...SEEDED_PROPS];
-  // Add projected line to any props missing it
-  rawProps.forEach(p => {
-    if (p.projectedLine == null) {
-      const base = parseFloat(p.dkLine || p.line || 0);
-      const conf  = p.confidence || 55;
-      const tier  = p.tier || 'neutral';
-      const tMult = tier==='elite'?1.0:tier==='strong'?0.7:tier==='neutral'?0:tier==='fade'?-0.8:0;
-      const bump  = tMult * (0.03+((conf-50)/100)*0.05) * base;
-      p.projectedLine = Math.round((base+bump)*2)/2;
-    }
-  });
-  let props = [...rawProps].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
+  let props = store.liveProps.length > 0 ? store.liveProps : [...SEEDED_PROPS];
+  props = [...props].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
   if (req.query.type) props=props.filter(p=>p.statType===req.query.type);
   if (req.query.tier) props=props.filter(p=>p.tier===req.query.tier);
   const source = store.liveProps.length > 0 ? 'live' : 'seeded';
