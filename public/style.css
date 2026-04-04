@@ -1309,3 +1309,93 @@ body.props-tab-active { padding-bottom:70px; }
 .br-parlay-row:last-child{border-bottom:none;}
 .br-legs{font-size:11px;font-weight:700;color:var(--txt);}
 .br-bet{font-size:10px;color:var(--muted);}
+
+/* ── PROBABILITY SECTION ON PROP CARDS ── */
+.prob-section{margin:6px 0;padding:6px 0;border-top:1px solid rgba(255,255,255,.06);}
+.prob-header{font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px;}
+.prob-bars{display:flex;flex-direction:column;gap:4px;}
+.prob-item{display:flex;align-items:center;gap:6px;}
+.prob-side{font-size:8px;font-weight:700;letter-spacing:.5px;width:38px;text-align:right;}
+.over-prob .prob-side{color:var(--green);}
+.under-prob .prob-side{color:var(--fade);}
+.prob-meter{flex:1;height:6px;background:var(--surf2);border-radius:3px;overflow:hidden;}
+.prob-fill{height:100%;border-radius:3px;transition:width .4s ease;}
+.over-fill{background:linear-gradient(to right,rgba(34,197,94,.5),var(--green));}
+.under-fill{background:linear-gradient(to right,rgba(255,85,85,.5),var(--fade));}
+.prob-pct{font-size:11px;font-weight:700;min-width:32px;text-align:right;}
+.over-pct{color:var(--green);}
+.under-pct{color:var(--fade);}
+.prob-fair{font-size:9px;color:var(--muted);min-width:38px;text-align:center;background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px;}
+
+/* ── SEASON AVG ROW ── */
+.season-avg-row{display:flex;align-items:center;gap:6px;padding:3px 0 4px;}
+.avg-lbl{font-size:9px;color:var(--muted);font-weight:600;letter-spacing:.3px;}
+.avg-val{font-size:14px;font-weight:700;}
+.avg-diff{font-size:10px;margin-left:auto;}
+
+/* ── PROJECTION EDGE ── */
+.proj-edge{font-size:9px;font-weight:700;margin-left:4px;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,.04);}
+.proj-edge.proj-over{color:var(--green);background:rgba(34,197,94,.08);}
+.proj-edge.proj-under{color:var(--fade);background:rgba(255,85,85,.08);}
+
+/* ── NBA ID BADGE ── */
+.nba-id-badge{display:inline-block;font-size:8px;font-weight:600;color:var(--muted);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:4px;padding:0 4px;margin-left:4px;vertical-align:middle;letter-spacing:.3px;}
+
+/* ── BOOK IMPLIED PROBABILITY ── */
+.bk-impl{font-size:7px;color:var(--green);font-weight:600;margin-top:1px;opacity:.8;}
+
+/* ── BOOKS 7-column grid (was books6 → now 7 books sometimes) ── */
+.books7{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px;}
+@media(max-width:600px){.books7{grid-template-columns:repeat(3,1fr);}}
+
+/* ── ENHANCED ALT LINES TABLE ── */
+.alt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;}
+.alt-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(135deg,rgba(26,47,107,.4),rgba(155,0,0,.2));border-bottom:1px solid var(--bord);}
+.alt-lines-table-wrap{overflow-x:auto;}
+.alt-lines-table{width:100%;border-collapse:collapse;font-size:11px;}
+.alt-lines-table thead tr{background:var(--surf2);}
+.alt-lines-table th{padding:6px 8px;font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.4px;text-align:center;border-bottom:1px solid var(--bord);}
+.alt-lines-table td{padding:5px 8px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04);color:var(--txt);}
+.alt-lines-table tr:hover td{background:rgba(255,255,255,.03);}
+.alt-lines-table tr.main-line{background:rgba(255,215,0,.06);}
+.alt-lines-table tr.main-line td{color:var(--gold);font-weight:700;}
+.alt-line-num{font-weight:700;font-size:12px;}
+.alt-odds{font-size:11px;}
+.alt-prob{font-size:10px;font-weight:600;}
+.over-col{color:var(--green);}
+.under-col{color:var(--fade);}
+.over-cell{color:var(--green);}
+.under-cell{color:var(--fade);}
+.alt-tag{display:inline-block;font-size:7px;padding:1px 4px;border-radius:3px;background:var(--surf2);color:var(--muted);margin-left:3px;vertical-align:middle;}
+.alt-tag.main{background:rgba(255,215,0,.15);color:var(--gold);}
+
+/* ── PROP ACTIONS ROW ── */
+.prop-actions{display:flex;gap:6px;margin-top:8px;}
+.btn-shot-map{padding:7px 10px;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25);border-radius:7px;color:var(--neutral);font-size:10px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.btn-shot-map:hover{background:rgba(96,165,250,.2);}
+.btn-add-pick{flex:1;}
+
+/* ── PROPS SECTION TITLE ── */
+.props-section-title{font-family:'Bebas Neue',cursive;font-size:16px;color:var(--red);letter-spacing:1.5px;margin:16px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--bord);}
+.started-title{color:var(--green);}
+
+/* ── PROPS SEARCH ── */
+.props-search-row{display:flex;gap:6px;margin-bottom:10px;align-items:center;}
+.props-search-input{flex:1;background:var(--surf2);border:1px solid var(--bord);border-radius:8px;color:var(--txt);padding:8px 12px;font-size:12px;outline:none;}
+.props-search-input:focus{border-color:var(--red);}
+.props-search-input::placeholder{color:var(--muted);}
+.props-search-clear{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px 8px;}
+
+/* ── H2H STYLES ── */
+.h2h-input-row{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+.h2h-input{background:var(--surf2);border:1px solid var(--bord);border-radius:8px;color:var(--txt);padding:10px 14px;font-size:14px;font-weight:700;text-transform:uppercase;width:100px;text-align:center;outline:none;font-family:'Bebas Neue',cursive;letter-spacing:2px;}
+.h2h-input:focus{border-color:var(--red);}
+.h2h-btn{padding:10px 20px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;}
+.h2h-result{background:var(--card);border:1px solid var(--bord);border-radius:12px;padding:16px;overflow:hidden;}
+.h2h-score-row{display:flex;justify-content:center;gap:20px;align-items:center;margin-bottom:10px;}
+.h2h-team{font-family:'Bebas Neue',cursive;font-size:24px;color:#fff;}
+.h2h-vs{font-family:'Bebas Neue',cursive;font-size:16px;color:var(--muted);}
+.h2h-record{display:flex;justify-content:center;gap:10px;margin-bottom:12px;font-size:14px;color:var(--gold);font-weight:700;}
+.h2h-dash{color:var(--muted);}
+.h2h-games{border-top:1px solid var(--bord);padding-top:8px;}
+.h2h-row span{font-size:11px;}
