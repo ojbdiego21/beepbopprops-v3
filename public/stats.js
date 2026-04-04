@@ -1,4 +1,3 @@
-
 // ── RENDER DB RESULTS ──
 function renderDBResult(result, question) {
   if (!result || !result.rows || !result.rows.length) return '<div class="sm-empty">No data found for that query.</div>';
