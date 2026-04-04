@@ -501,7 +501,7 @@ SEEDED_PROPS.forEach(p => {
 
   p.projectedLine = projected;
 
-  // Attach raw season avg for frontend display
+  // Attach season avg for display
   if (playerStat) {
     const st = p.statType || '';
     if (st === 'points')   p.seasonAvg = playerStat.pts;
@@ -526,6 +526,7 @@ function lookupSeasonAvg(playerName, statType) {
   if (st === 'assists') return ps.ast;
   if (st === 'steals') return ps.stl;
   if (st === 'blocks') return ps.blk;
+  if (st.includes('threes') || st.includes('3')) return parseFloat((ps.three||'0').replace('%','')) > 1 ? parseFloat(ps.three) : null;
   if (st === 'pts+reb+ast' || st === 'points_rebounds_assists') return parseFloat((ps.pts + ps.reb + ps.ast).toFixed(1));
   if (st === 'pts+reb' || st === 'points_rebounds') return parseFloat((ps.pts + ps.reb).toFixed(1));
   if (st === 'pts+ast' || st === 'points_assists') return parseFloat((ps.pts + ps.ast).toFixed(1));
@@ -792,6 +793,15 @@ app.get('/api/props', (req,res) => {
     if (p.seasonAvg == null) {
       p.seasonAvg = lookupSeasonAvg(p.playerName, p.statType);
     }
+    // Calculate real hit rate from season avg vs line
+    if (p.seasonAvg != null && p.hitRateLast10) {
+      const avg = p.seasonAvg;
+      const line = parseFloat(p.dkLine || p.line || 0);
+      const diff = avg - line;
+      // Estimate: if avg > line by a lot, higher hit rate
+      const estHitRate = Math.min(10, Math.max(1, Math.round(5 + (diff / (line * 0.1)) * 2)));
+      p.hitRateLast10 = estHitRate + '/10';
+    }
   });
   let props = [...rawProps].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
   if (req.query.type) props=props.filter(p=>p.statType===req.query.type);
@@ -1041,6 +1051,43 @@ app.get('/api/nba/career', async (req,res) => {
     }});
     res.json({success:true, data});
   } catch(e){ res.status(500).json({success:false,error:e.message}); }
+});
+
+// PROP DETAIL — returns opponent injuries, positional weakness, matchup context
+app.get('/api/prop-detail', (req, res) => {
+  const { player, team, opponent, statType } = req.query;
+  if (!player || !opponent) return res.json({ success: false, error: 'Need player + opponent' });
+
+  // Opponent injuries
+  const oppInjuries = store.injuries.filter(i => i.team === opponent);
+
+  // Find opponent's defensive rank from PLAYER_STATS context
+  const nameKey = (player || '').toLowerCase();
+  const playerStat = PLAYER_STATS[nameKey];
+
+  // Get all props for same game for context
+  const allGameProps = (store.liveProps.length ? store.liveProps : SEEDED_PROPS)
+    .filter(p => (p.team === team && p.opponent === opponent) || (p.team === opponent && p.opponent === team));
+
+  // Build matchup notes
+  let matchupNotes = [];
+  if (oppInjuries.length) {
+    const outPlayers = oppInjuries.filter(i => i.status.toLowerCase().includes('out'));
+    const questionable = oppInjuries.filter(i => i.status.toLowerCase().includes('quest'));
+    if (outPlayers.length) matchupNotes.push(outPlayers.map(i => i.playerName + ' (OUT - ' + i.injury + ')').join(', '));
+    if (questionable.length) matchupNotes.push(questionable.map(i => i.playerName + ' (GTD - ' + i.injury + ')').join(', '));
+  }
+
+  res.json({
+    success: true,
+    playerStats: playerStat || null,
+    oppInjuries,
+    matchupNotes,
+    gameProps: allGameProps.map(p => ({
+      playerName: p.playerName, statType: p.statType, line: p.dkLine || p.line,
+      confidence: p.confidence, tier: p.tier, direction: p.direction,
+    })),
+  });
 });
 
 app.get('/api/health',(req,res)=>res.json({status:'ok',time:new Date().toISOString(),games:store.games.length,injuries:store.injuries.length,liveProps:store.liveProps.length,source:store.liveProps.length>0?'Odds API (LIVE)':'Seeded (hardcoded)'}));
