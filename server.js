@@ -142,20 +142,63 @@ const SEEDED_PROPS = [
     hitRateLast10:'3/10', nbaPhotoId:'1641749', reasoning:'FADE OVER — BKN 7.8% win prob vs CHA. BKN players score less in blowout losses. Fade all BKN props.' },
 ];
 
+// ── STAT TYPE MAP: which PLAYER_STATS field to use for each prop type ──
+const STAT_FIELD = {
+  'points':'pts', 'rebounds':'reb', 'assists':'ast',
+  'steals':'stl', 'blocks':'blk', 'threes':'three',
+  'points_rebounds_assists':'pra', 'points_rebounds':'pr',
+  'points_assists':'pa', 'rebounds_assists':'ra',
+  'double_double':'dd',
+};
+
 SEEDED_PROPS.forEach(p => {
   p.altLines = buildAltLines(p.dkLine, p.dkOdds);
-  // Projected line — what BeepBot thinks the true number should be
-  // Based on confidence, tier, and stat type
-  const base = parseFloat(p.dkLine || p.line || 0);
-  const conf = p.confidence || 60;
-  // Tier multiplier: elite props project higher, fade props project lower
-  const tierMult = p.tier==='elite'?1.0:p.tier==='strong'?0.7:p.tier==='neutral'?0:p.tier==='fade'?-0.8:-0.3;
-  // Base bump: 3-8% of the line depending on confidence
-  const bumpPct = 0.03 + ((conf-50)/100) * 0.05;
-  const bump = tierMult * bumpPct * base;
-  // Round to nearest 0.5
-  const raw = base + bump;
-  p.projectedLine = Math.round(raw * 2) / 2;
+
+  // Find season avg for this player + stat from PLAYER_STATS
+  const nameKey = (p.playerName||'').toLowerCase();
+  const playerStat = PLAYER_STATS[nameKey];
+
+  let projected = null;
+
+  if (playerStat) {
+    const statType = p.statType || '';
+    let seasonAvg = null;
+
+    if (statType === 'points')   seasonAvg = playerStat.pts;
+    else if (statType === 'rebounds') seasonAvg = playerStat.reb;
+    else if (statType === 'assists')  seasonAvg = playerStat.ast;
+    else if (statType === 'steals')   seasonAvg = playerStat.stl;
+    else if (statType === 'blocks')   seasonAvg = playerStat.blk;
+    else if (statType === 'threes')   seasonAvg = parseFloat((playerStat.three||'0%')) * (playerStat.fg3a || 6);
+    else if (statType === 'points_rebounds_assists') seasonAvg = playerStat.pts + playerStat.reb + playerStat.ast;
+    else if (statType === 'points_rebounds')   seasonAvg = playerStat.pts + playerStat.reb;
+    else if (statType === 'points_assists')    seasonAvg = playerStat.pts + playerStat.ast;
+    else if (statType === 'rebounds_assists')  seasonAvg = playerStat.reb + playerStat.ast;
+
+    if (seasonAvg && seasonAvg > 0) {
+      // Season avg IS the base projection
+      // Apply small matchup adjustment based on reasoning text
+      let matchupMult = 1.0;
+      const reason = (p.reasoning || '').toLowerCase();
+      if (reason.includes('worst defense') || reason.includes('28th') || reason.includes('29th') || reason.includes('30th')) matchupMult = 1.05;
+      if (reason.includes('elite defense') || reason.includes('best defense') || reason.includes('1st in')) matchupMult = 0.95;
+      if (reason.includes('must-win') || reason.includes('clinch') || reason.includes('big game')) matchupMult = 1.04;
+      if (reason.includes('blowout') || reason.includes('rest') || reason.includes('load manage')) matchupMult = 0.92;
+
+      const raw = seasonAvg * matchupMult;
+      // Round to nearest 0.5
+      projected = Math.round(raw * 2) / 2;
+    }
+  }
+
+  // Fallback: if no player stats found, use line + tier bump
+  if (projected == null) {
+    const base = parseFloat(p.dkLine || p.line || 0);
+    const tMult = p.tier==='elite'?1.0:p.tier==='strong'?0.7:p.tier==='neutral'?0:p.tier==='fade'?-0.8:0;
+    projected = Math.round((base + tMult*0.04*base) * 2) / 2;
+  }
+
+  p.projectedLine = projected;
 });
 
 // ── PLAYER STATS DATABASE ──
