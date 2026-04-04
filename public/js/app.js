@@ -1,3 +1,4 @@
+// BeepBopProps$ app.js v4.1 — rebuilt 2026-04-04 09:26
 // BeepBopProps$ — app.js — complete clean rewrite
 
 var allProps = [];

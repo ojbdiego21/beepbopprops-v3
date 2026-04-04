@@ -1,3 +1,4 @@
+// BeepBopProps$ v4.1 — rebuilt 2026-04-04 09:26
 // BeepBopProps$ — Single File Server v4
 // No database. Always fresh. March 31 2026.
 require('dotenv').config();
