@@ -1008,6 +1008,17 @@ app.get('/api/nba/career', async (req,res) => {
   } catch(e){ res.status(500).json({success:false,error:e.message}); }
 });
 
+app.get('/api/debug/proj',(req,res)=>{
+  const sample = [...SEEDED_PROPS].slice(0,5).map(p=>({
+    name: p.playerName,
+    stat: p.statType,
+    line: p.dkLine,
+    projected: p.projectedLine,
+    diff: p.projectedLine != null ? (p.projectedLine - p.dkLine).toFixed(1) : 'null'
+  }));
+  res.json({sample});
+});
+
 app.get('/api/health',(req,res)=>res.json({status:'ok',time:new Date().toISOString(),games:store.games.length,injuries:store.injuries.length,liveProps:store.liveProps.length,source:store.liveProps.length>0?'Odds API (LIVE)':'Seeded (hardcoded)'}));
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
 
