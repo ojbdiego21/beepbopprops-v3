@@ -630,18 +630,17 @@ function showTab(id,el){
   var miniSlip = document.getElementById('mini-slip-btn');
 
   if (id === 'tab-props') {
-    // Props tab: full width (slip shown at BOTTOM as sticky bar)
-    if (layout) layout.style.gridTemplateColumns = '1fr';
-    if (slip) slip.style.display = 'none'; // hide side panel, bottom bar used instead
+    // Props tab: two-column layout with slip on the RIGHT
+    if (layout) layout.style.gridTemplateColumns = '1fr 330px';
+    if (slip) { slip.style.display = 'block'; slip.style.position = 'sticky'; slip.style.top = '115px'; }
     if (miniSlip) miniSlip.style.display = 'none';
     document.body.classList.add('props-tab-active');
-    // Rebuild game filter
     if (allProps && allProps.length) buildPropsGameFilter(allProps);
   } else {
+    // All other tabs: full width, hide side slip, show mini badge in header
     if (layout) layout.style.gridTemplateColumns = '1fr';
     if (slip) slip.style.display = 'none';
-    // Show mini slip in header if picks exist
-    var count = slipPicks ? slipPicks.length : 0;
+    var count = (window.pickSlip || []).length;
     if (miniSlip) {
       miniSlip.style.display = count > 0 ? 'flex' : 'none';
       var badge = document.getElementById('mini-slip-count');
@@ -795,6 +794,18 @@ function renderStatsResult(d) {
 
 // Init stats on page load
 document.addEventListener('DOMContentLoaded', function(){
+  // Set initial layout for Props tab (default active tab)
+  var layout = document.querySelector('.main-layout');
+  var slip = document.querySelector('.slip-panel');
+  if (layout) layout.style.gridTemplateColumns = '1fr 330px';
+  if (slip) { slip.style.display = 'block'; slip.style.position = 'sticky'; slip.style.top = '115px'; }
+  // Restore bankroll from localStorage
+  var saved = localStorage.getItem('bbp_bankroll');
+  if (saved) {
+    var inp = document.getElementById('bankroll-input');
+    if (inp) inp.value = saved;
+    if (typeof setBankroll === 'function') setBankroll(saved);
+  }
   setTimeout(initStats, 500);
 });
 

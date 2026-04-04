@@ -363,7 +363,7 @@ footer{background:var(--dkblue);border-top:1px solid var(--bord);padding:14px;te
 #mobile-slip-btn .slip-count{background:var(--green);color:#000;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
 #mobile-slip-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.75);align-items:flex-end;justify-content:center;padding:0;}
 .mobile-slip-inner{background:var(--surf);border:1.5px solid var(--green);border-radius:20px 20px 0 0;width:100%;max-width:500px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;}
-@media(max-width:960px){.slip-panel{display:none!important;}#mobile-slip-btn{display:flex!important;}.main-layout{grid-template-columns:1fr!important;}}
+@media(max-width:960px){#mobile-slip-btn{display:flex!important;}.main-layout{grid-template-columns:1fr!important;}.slip-panel{display:none!important;}}
 @media(min-width:961px){#mobile-slip-btn{display:none!important;}#mobile-slip-overlay{display:none!important;}}
 
 /* ── BEEPBOPSTATS CHAT ── */
@@ -1012,22 +1012,7 @@ body::before {
 .mini-slip-btn:hover { opacity:.85; transform:scale(1.03); }
 
 /* ── SLIP PANEL AT BOTTOM OF PROPS ── */
-.props-slip-bottom {
-  margin-top:20px;
-  border-top:1px solid var(--bord);
-  padding-top:14px;
-}
-.props-slip-bottom .slip-panel {
-  position:static !important;
-  max-height:none;
-  width:100%;
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-@media(max-width:700px){
-  .props-slip-bottom .slip-panel { grid-template-columns:1fr; }
-}
+/* props-slip-bottom removed */
 
 /* ── GAME FILTER TEAM LOGOS ── */
 .props-game-row {
