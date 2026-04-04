@@ -1,79 +1,67 @@
-// BeepBopProps$ v3 — frontend app.js
+// BeepBopProps$ — app.js — complete clean rewrite
+
+var allProps = [];
 var slipPicks = [];
-var allProps  = [];
+var _propFilterType = 'all';
+var _propSearchText = '';
+var _propGameFilter = 'all';
+var slipPanelOpen = true;
+var bankrollAmount = 0;
 
-var TEAMS = ['ATL','BOS','BKN','CHA','CHI','CLE','DAL','DEN','DET','GSW',
-             'HOU','IND','LAC','LAL','MEM','MIA','MIL','MIN','NOP','NYK',
-             'OKC','ORL','PHI','PHX','POR','SAC','SAS','TOR','UTA','WAS'];
-
-var EMOJI = {
-  LAL:'👑',BOS:'☘️',GSW:'⚡',MIA:'🔥',PHI:'🔔',ATL:'🦅',BKN:'🌉',CHA:'🐝',
-  CHI:'🐂',CLE:'⚔️',DAL:'🤠',DEN:'⛰️',DET:'🏎️',HOU:'🚀',IND:'🏎️',LAC:'🦈',
-  MEM:'🐻',MIL:'🦌',MIN:'🐺',NOP:'🎷',NYK:'🗽',OKC:'⚡',ORL:'🌊',PHX:'☀️',
-  POR:'🌹',SAC:'👑',SAS:'🌟',TOR:'🦖',UTA:'🎵',WAS:'🧙'
-};
-
+// ── INIT ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {
   setDate();
-  populateH2H();
   loadAllData();
   setInterval(loadLive, 60000);
   setInterval(animateMeters, 3500);
 
-  // Set initial layout — Props tab is default, slip on right
+  // Props tab default: show slip on right
   var layout = document.querySelector('.main-layout');
-  var slip = document.querySelector('.slip-panel');
+  var slip   = document.querySelector('.slip-panel');
   if (layout) layout.style.gridTemplateColumns = '1fr 330px';
-  if (slip) { slip.style.display = 'block'; slip.style.position = 'sticky'; slip.style.top = '115px'; }
+  if (slip)   { slip.style.display = 'block'; }
 
   // Restore bankroll
-  var saved = localStorage.getItem('bbp_bankroll');
-  if (saved) {
-    var inp = document.getElementById('bankroll-input');
-    if (inp) inp.value = saved;
-    if (typeof setBankroll === 'function') setBankroll(saved);
-  }
+  try {
+    var saved = localStorage.getItem('bbp_bankroll');
+    if (saved) {
+      bankrollAmount = parseFloat(saved) || 0;
+      var inp = document.getElementById('bankroll-input');
+      if (inp) inp.value = saved;
+    }
+  } catch(e) {}
 });
 
 function setDate() {
   var d = new Date();
   var days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  document.getElementById('date-display').textContent =
-    days[d.getDay()] + ' · ' + months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+  var el = document.getElementById('date-display');
+  if (el) el.textContent = days[d.getDay()] + ' ' + months[d.getMonth()] + ' ' + d.getDate();
 }
 
-function populateH2H() {
-  ['h2h-t1','h2h-t2'].forEach(function(id) {
-    var sel = document.getElementById(id);
-    TEAMS.forEach(function(t) {
-      var o = document.createElement('option');
-      o.value = t; o.textContent = (EMOJI[t]||'') + ' ' + t;
-      sel.appendChild(o);
-    });
-  });
-}
-
-async async function loadAllData() {
+async function loadAllData() {
   var btn = document.getElementById('refresh-btn');
-  btn.disabled = true; btn.classList.add('loading');
+  if (btn) { btn.disabled = true; btn.classList.add('loading'); }
   await Promise.allSettled([loadGames(), loadProps(), loadInjuries(), loadLive(), loadParlays()]);
-  btn.disabled = false; btn.classList.remove('loading');
-  var now = new Date();
-  document.getElementById('last-updated-txt').textContent =
-    '🕸️ Updated ' + now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+  var el = document.getElementById('last-updated-txt');
+  if (el) el.textContent = 'Updated ' + new Date().toLocaleTimeString();
 }
 
+// ── GAMES ────────────────────────────────────────
 async function loadGames() {
   try {
-    var r = await fetch('/api/games'); var d = await r.json();
-    if (!d.success || !d.games.length) { showErr('games','No games found today.'); return; }
-    renderGames(d.games); updateTicker(d.games);
+    var r = await fetch('/api/games');
+    var d = await r.json();
+    if (!d.success) { showErr('games','Could not load games.'); return; }
+    window._liveGames = d.games || [];
+    renderGames(d.games || []);
+    updateTicker(d.games || []);
   } catch(e) { showErr('games', e.message); }
 }
 
 function renderGames(games) {
-  // Store live/started games globally for props section
   window._liveGames = games;
   var html = '<div class="games-grid">';
   games.forEach(function(g) {
@@ -82,26 +70,38 @@ function renderGames(games) {
     var isLive  = g.status === 'live';
     var isFinal = g.status === 'final';
     var tc = 'b-' + (g.tier || 'neutral');
+    var awayLogoId = NBA_TEAM_IDS[g.awayTeam] || '';
+    var homeLogoId = NBA_TEAM_IDS[g.homeTeam] || '';
+    var awayLogo = awayLogoId
+      ? '<img src="https://cdn.nba.com/logos/nba/'+awayLogoId+'/global/L/logo.svg" class="team-logo-img" onerror="this.style.display=\'none\'">'
+      : '<span style="font-size:28px">🏀</span>';
+    var homeLogo = homeLogoId
+      ? '<img src="https://cdn.nba.com/logos/nba/'+homeLogoId+'/global/L/logo.svg" class="team-logo-img" onerror="this.style.display=\'none\'">'
+      : '<span style="font-size:28px">🏀</span>';
+
     html += '<div class="game-card' + (isLive?' live-game':'') + '">'
       + '<div class="gc-head">'
-        + '<span class="gc-time">' + (isFinal ? '✅ FINAL' : isLive ? g.quarter+' '+g.clock : g.tipoff) + (g.arena ? ' · '+g.arena:'') + '</span>'
+        + '<span class="gc-time">' + (isFinal ? '✅ FINAL' : isLive ? g.quarter+' '+g.clock : g.tipoff) + (g.arena?' · '+g.arena:'') + '</span>'
         + (isLive ? '<span class="gc-live">● LIVE</span>' : '<span class="badge '+tc+'">'+(g.tier||'neutral').toUpperCase()+'</span>')
       + '</div>'
       + '<div class="matchup">'
-        + '<div class="team"><div class="team-logo-wrap">'+(NBA_TEAM_IDS[g.awayTeam]?'<img src="https://cdn.nba.com/logos/nba/'+NBA_TEAM_IDS[g.awayTeam]+'/global/L/logo.svg" class="team-logo-img">':'<span class="team-emoji">🏀</span>')+'</div><div class="team-abbr">'+g.awayTeam+'</div>'+(isLive||isFinal?'<div class="team-score">'+g.awayScore+'</div>':'')+'<div class="team-rec">'+g.awayRecord+'</div></div>'
+        + '<div class="team"><div class="team-logo-wrap">'+awayLogo+'</div><div class="team-abbr">'+g.awayTeam+'</div>'+(isLive||isFinal?'<div class="team-score">'+g.awayScore+'</div>':'')+'<div class="team-rec">'+g.awayRecord+'</div></div>'
         + '<div class="vs-mid"><div class="vs-at">@</div><div class="gspread">'+g.spread+'</div><div class="gtotal">O/U '+g.total+'</div></div>'
-        + '<div class="team"><div class="team-logo-wrap">'+(NBA_TEAM_IDS[g.homeTeam]?'<img src="https://cdn.nba.com/logos/nba/'+NBA_TEAM_IDS[g.homeTeam]+'/global/L/logo.svg" class="team-logo-img">':'<span class="team-emoji">🏀</span>')+'</div><div class="team-abbr">'+g.homeTeam+'</div>'+(isLive||isFinal?'<div class="team-score">'+g.homeScore+'</div>':'')+'<div class="team-rec">'+g.homeRecord+'</div></div>'
+        + '<div class="team"><div class="team-logo-wrap">'+homeLogo+'</div><div class="team-abbr">'+g.homeTeam+'</div>'+(isLive||isFinal?'<div class="team-score">'+g.homeScore+'</div>':'')+'<div class="team-rec">'+g.homeRecord+'</div></div>'
       + '</div>'
       + '<div class="prob-row"><span class="plabel">'+g.awayTeam+' '+ap+'%</span><div class="pbar"><div class="pfill" style="width:'+ap+'%"></div></div><span class="plabel">'+g.homeTeam+' '+hp+'%</span></div>'
       + '<div class="gc-foot">'+(g.topPicks||[]).map(function(p){return'<span class="badge b-strong">'+p+'</span>';}).join('')+'</div>'
     + '</div>';
   });
-  document.getElementById('games-content').innerHTML = html + '</div>';
+  var el = document.getElementById('games-content');
+  if (el) el.innerHTML = html + '</div>';
 }
 
+// ── PROPS ────────────────────────────────────────
 async function loadProps() {
   try {
-    var r = await fetch('/api/props'); var d = await r.json();
+    var r = await fetch('/api/props');
+    var d = await r.json();
     if (!d.success) { showErr('props','Could not load props.'); return; }
     allProps = d.props || [];
     renderProps(allProps);
@@ -111,49 +111,37 @@ async function loadProps() {
 
 function renderProps(props) {
   if (!props.length) {
-    document.getElementById('props-content').innerHTML = '<div class="err-box"><h3>No Props</h3><p>Props appear when lines are posted. Try refreshing.</p></div>';
+    var el = document.getElementById('props-content');
+    if (el) el.innerHTML = '<div class="err-box"><h3>No Props</h3><p>Props appear when lines are posted.</p></div>';
     return;
   }
 
-  // Split props into live/started games vs upcoming
+  // Split live vs upcoming
   var liveTeams = [];
-  if (window._liveGames) {
-    window._liveGames.forEach(function(g) {
-      if (g.status === 'live' || g.status === 'final') {
-        liveTeams.push(g.homeTeam);
-        liveTeams.push(g.awayTeam);
-      }
-    });
-  }
+  (window._liveGames || []).forEach(function(g) {
+    if (g.status === 'live' || g.status === 'final') {
+      liveTeams.push(g.homeTeam);
+      liveTeams.push(g.awayTeam);
+    }
+  });
 
-  var startedProps = liveTeams.length > 0
-    ? props.filter(function(p){ return liveTeams.includes(p.team) || liveTeams.includes(p.opponent); })
-    : [];
-  var upcomingProps = startedProps.length > 0
-    ? props.filter(function(p){ return !liveTeams.includes(p.team) && !liveTeams.includes(p.opponent); })
-    : props;
+  var startedProps  = liveTeams.length ? props.filter(function(p){ return liveTeams.includes(p.team)||liveTeams.includes(p.opponent); }) : [];
+  var upcomingProps = startedProps.length ? props.filter(function(p){ return !liveTeams.includes(p.team)&&!liveTeams.includes(p.opponent); }) : props;
 
   var html = '';
-
-  // Upcoming props section
   if (upcomingProps.length) {
-    html += '<div class="props-section-title">🎯 Upcoming Props</div>';
-    html += '<div class="props-grid">';
-    upcomingProps.forEach(function(p) { html += buildPropCard(p); });
+    html += '<div class="props-section-title">🎯 Upcoming Props</div><div class="props-grid">';
+    upcomingProps.forEach(function(p){ html += buildPropCard(p); });
     html += '</div>';
   }
-
-  // Started/live props section
   if (startedProps.length) {
-    html += '<div class="props-section-title started-title">⚡ Game Started — Lines May Have Moved</div>';
-    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:6px 10px;background:rgba(229,34,34,.05);border-radius:6px;border:1px solid var(--bord)">These games have already tipped off. Verify lines on DraftKings or PrizePicks before placing bets.</div>';
-    html += '<div class="props-grid">';
-    startedProps.forEach(function(p) { html += buildPropCard(p); });
+    html += '<div class="props-section-title started-title">⚡ Game Started</div><div class="props-grid">';
+    startedProps.forEach(function(p){ html += buildPropCard(p); });
     html += '</div>';
   }
 
-  document.getElementById('props-content').innerHTML = html;
-  // Build game filter buttons
+  var el = document.getElementById('props-content');
+  if (el) el.innerHTML = html;
   buildPropsGameFilter(props);
 }
 
@@ -164,26 +152,39 @@ function buildPropCard(p) {
   var rc   = t==='elite'?'#FFD700':t==='strong'?'#00D4AA':t==='neutral'?'#60a5fa':'#ff5555';
   var pid  = p.nbaPhotoId || '0';
   var bookLines = [
-    { key:'dk',  name:'DraftKings', line: p.dkLine,   odds: p.dkOdds   },
-    { key:'fd',  name:'FanDuel',    line: p.fdLine,   odds: p.fdOdds   },
-    { key:'mgm', name:'BetMGM',     line: p.mgmLine,  odds: p.mgmOdds  },
-    { key:'czr', name:'Caesars',    line: p.czrLine,  odds: p.czrOdds  },
-    { key:'pp',  name:'PrizePicks', line: p.ppLine,   odds: 'More'     },
-    { key:'ud',  name:'Underdog',   line: p.udLine,   odds: p.udOdds   },
-    { key:'reb', name:'Rebet',      line: p.rebetLine,odds: p.rebetOdds},
+    { key:'dk',  name:'DraftKings', line:p.dkLine,    odds:p.dkOdds   },
+    { key:'fd',  name:'FanDuel',    line:p.fdLine,    odds:p.fdOdds   },
+    { key:'mgm', name:'BetMGM',     line:p.mgmLine,   odds:p.mgmOdds  },
+    { key:'czr', name:'Caesars',    line:p.czrLine,   odds:p.czrOdds  },
+    { key:'pp',  name:'PrizePicks', line:p.ppLine,    odds:'More'     },
+    { key:'ud',  name:'Underdog',   line:p.udLine,    odds:p.udOdds   },
+    { key:'reb', name:'Rebet',      line:p.rebetLine, odds:p.rebetOdds},
   ];
   var validLines = bookLines.filter(function(b){ return b.line != null; });
   var bestLine   = validLines.length ? Math.min.apply(null, validLines.map(function(b){ return b.line; })) : p.line;
+
   var booksHtml = '<div class="books7">';
   bookLines.forEach(function(b) {
     var isBest = b.line != null && b.line === bestLine && p.direction === 'over';
-    booksHtml += '<div class="bk' + (isBest?' best-line':'') + '"><div class="bkname '+b.key+'">'+b.name+'</div><div class="bknum">'+(b.line != null ? b.line : '--')+'</div><div class="bkodds">'+(b.odds||'--')+'</div></div>';
+    booksHtml += '<div class="bk'+(isBest?' best-line':'')+'"><div class="bkname '+b.key+'">'+b.name+'</div><div class="bknum">'+(b.line!=null?b.line:'--')+'</div><div class="bkodds">'+(b.odds||'--')+'</div></div>';
   });
-  booksHtml += '</div>'; // end books7
-  var pickId = (pid + '_' + p.statType + '_' + (p.team||'')).replace(/[^a-z0-9_]/gi,'_');
-  var safeLabel = (p.playerName+' '+cap(p.statType)+' '+(p.direction||'over').toUpperCase()+' '+(p.line||p.dkLine||'?')).replace(/'/g,"\\'");
-  var safeName  = (p.playerName||'').replace(/'/g,"\\'");
-  var safeGame  = ((p.team||'')+(p.opponent?' vs '+p.opponent:'')).replace(/'/g,"\\'");
+  booksHtml += '</div>';
+
+  // Projected line
+  var projHtml = '';
+  if (p.projectedLine != null) {
+    var baseL = parseFloat(p.dkLine||p.line||0);
+    var projL = parseFloat(p.projectedLine);
+    var diff  = (projL - baseL).toFixed(1);
+    var projCls = projL > baseL ? 'proj-over' : 'proj-under';
+    var arrow   = projL > baseL ? '▲ +' : '▼ ';
+    projHtml = '<div class="proj-line-row"><span class="proj-lbl">📊 Projected</span><span class="proj-val '+projCls+'">'+projL+'</span><span class="proj-diff">'+arrow+Math.abs(parseFloat(diff)).toFixed(1)+'</span></div>';
+  }
+
+  var pickId  = (pid+'_'+p.statType+'_'+(p.team||'')).replace(/[^a-z0-9_]/gi,'_');
+  var safeLabel = esc(p.playerName+' '+cap(p.statType)+' '+(p.direction||'over').toUpperCase()+' '+(p.line||p.dkLine||'?'));
+  var safeName  = esc(p.playerName||'');
+  var safeGame  = esc((p.team||'')+(p.opponent?' vs '+p.opponent:''));
 
   return '<div class="prop-card '+t+'" data-type="'+p.statType+'" data-tier="'+t+'" data-player="'+(p.playerName||'').toLowerCase()+'" data-team="'+(p.team||'').toLowerCase()+'_'+(p.opponent||'').toLowerCase()+'">'
     + '<div class="pp-head">'
@@ -194,265 +195,221 @@ function buildPropCard(p) {
     + '<div class="pp-body">'
       + '<div class="ps-lbl">'+cap(p.statType)+' · '+t.toUpperCase()+' PICK</div>'
       + '<div class="pline-row"><span class="stat-num">'+(p.line||p.dkLine||'?')+'</span><span class="ou '+(p.direction||'over')+'">'+(p.direction||'over').toUpperCase()+'</span></div>'
-      + (p.projectedLine != null ? '<div class="proj-line-row"><span class="proj-lbl">📊 Projected</span><span class="proj-val '+(parseFloat(p.projectedLine) > parseFloat(p.dkLine||p.line||0) ? 'proj-over' : 'proj-under')+'">'+p.projectedLine+'</span><span class="proj-diff">'+(parseFloat(p.projectedLine) > parseFloat(p.dkLine||p.line||0) ? '▲ +' : '▼ ')+(Math.abs(parseFloat(p.projectedLine) - parseFloat(p.dkLine||p.line||0)).toFixed(1))+'</span></div>' : '')
+      + projHtml
       + booksHtml
       + '<div class="pp-foot"><div class="hr">L10: <span>'+(p.hitRateLast10||'?/10')+'</span></div><span class="badge b-'+t+'">'+t.toUpperCase()+'</span></div>'
-      + (p.reasoning ? '<div class="reason-text">'+p.reasoning+'</div>' : '')
+      + (p.reasoning?'<div class="reason-text">'+p.reasoning+'</div>':'')
       + '<div class="prop-actions">'
-      + '<button class="btn-add-pick" data-pick-id="'+pickId+'" onclick="addPick(this,\''+safeLabel+'\',\''+safeName+'\',\''+safeGame+'\','+conf+',\''+p.statType+'\',\''+pid+'\',\''+pickId+'\')">＋ Add to Slip</button>'
-      + '<button class="btn-shot-map" data-name="'+safeName+'" data-pid="'+pid+'" data-team="'+(p.team||'')+'" data-opp="'+(p.opponent||'')+'" data-stat="'+p.statType+'" onclick="openShotMapFromCard(this)" title="Shot Map">📍 Shot Map</button>'
+        + '<button class="btn-add-pick" onclick="addPick(this,\''+safeLabel+'\',\''+safeName+'\',\''+safeGame+'\','+conf+',\''+p.statType+'\',\''+pid+'\',\''+pickId+'\')">＋ Add to Slip</button>'
+        + '<button class="btn-shot-map" data-name="'+safeName+'" data-pid="'+pid+'" data-team="'+(p.team||'')+'" data-opp="'+(p.opponent||'')+'" data-stat="'+p.statType+'" onclick="openShotMapFromCard(this)" title="Shot Map">📍 Shot Map</button>'
       + '</div>'
     + '</div>'
   + '</div>';
 }
 
+// ── ALT LINES ────────────────────────────────────
 function renderAltLines(props) {
-  if (!props.length) { document.getElementById('altlines-content').innerHTML = '<div class="err-box"><h3>No Alt Lines</h3><p>Load props first.</p></div>'; return; }
+  if (!props.length) { var e=document.getElementById('altlines-content'); if(e)e.innerHTML='<div class="err-box"><h3>No Alt Lines</h3></div>'; return; }
+  var _altFilter = 'all';
   var html = '';
   props.forEach(function(p) {
-    var pid = p.nbaPhotoId || '0';
+    var pid  = p.nbaPhotoId || '0';
     var alts = p.altLines || [];
     var mainLine = p.dkLine || p.line || 0;
-    html += '<div class="alt-card" data-alt-type="'+p.statType+'">'
-      + '<div class="alt-card-head">'
-        + '<div class="av" style="width:40px;height:40px"><img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+pid+'.png" onerror="this.style.display=\'none\'"></div>'
-        + '<div class="alt-card-name"><div class="pname">'+p.playerName+'</div><div class="pteam">'+(p.team||'')+(p.opponent?' vs '+p.opponent:'')+'</div></div>'
-        + '<div class="alt-card-stat">'+cap(p.statType)+'</div>'
+    html += '<div class="alt-card" data-type="'+p.statType+'">'
+      + '<div class="alt-head">'
+        + '<img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+pid+'.png" onerror="this.style.display=\'none\'" style="width:36px;height:36px;border-radius:50%;object-fit:cover">'
+        + '<div><div class="pname" style="font-size:12px">'+p.playerName+'</div><div class="pteam" style="font-size:10px">'+cap(p.statType)+'</div></div>'
+        + '<div style="margin-left:auto;font-size:13px;font-weight:700;color:var(--gold)">'+mainLine+'</div>'
       + '</div>'
-      + '<div style="padding:10px 14px">'
-        + '<div style="margin-bottom:10px"><div style="font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:600">ALL BOOKS</div>'
-          + '<div class="books6">'
-            + mkBk('dk','DraftKings',p.dkLine,p.dkOdds,mainLine,p.direction)
-            + mkBk('fd','FanDuel',p.fdLine,p.fdOdds,mainLine,p.direction)
-            + mkBk('mgm','BetMGM',p.mgmLine,p.mgmOdds,mainLine,p.direction)
-            + mkBk('czr','Caesars',p.czrLine,p.czrOdds,mainLine,p.direction)
-            + mkBk('pp','PrizePicks',p.ppLine,'More/Less',mainLine,p.direction)
-            + mkBk('reb','Rebet',p.rebetLine,p.rebetOdds,mainLine,p.direction)
-          + '</div></div>'
-        + '<div style="font-size:10px;color:var(--muted);margin-bottom:5px;font-weight:600">ALTERNATE LINES — Hit % + Value</div>'
-        + '<div class="alt-table-wrap"><table class="alt-table"><thead><tr><th>Line</th><th>Over</th><th>Under</th><th>Hit %</th><th>Edge</th></tr></thead><tbody>'
-        + alts.map(function(a) {
-            var isMain = a.line === mainLine;
-            var overImp = calcImplied(a.overOdds);
-            var underImp = calcImplied(a.underOdds);
-            var val = getValueLabel(a.overOdds);
-            return '<tr class="'+(isMain?'main-line':'')+'">'
-              + '<td>'+a.line+(isMain?'<span class="alt-tag main">MAIN</span>':'<span class="alt-tag">ALT</span>')+'</td>'
-              + '<td class="'+(parseFloat(a.overOdds)>0?'odds-pos':'odds-neg')+'">'+a.overOdds+'</td>'
-              + '<td class="'+(parseFloat(a.underOdds)>0?'odds-pos':'odds-neg')+'">'+a.underOdds+'</td>'
-              + '<td><div style="display:flex;align-items:center;gap:4px"><div style="width:40px;height:5px;background:var(--bord);border-radius:3px;overflow:hidden"><div style="width:'+overImp+'%;height:100%;background:var(--gold);border-radius:3px"></div></div><span style="font-size:9px;color:var(--gold)">'+overImp+'%</span></div></td>'
-              + '<td style="font-size:9px;color:'+(val==='Value'?'#00D4AA':val==='Fair'?'var(--muted)':'var(--red)')+'">'+val+'</td>'
-            + '</tr>';
-          }).join('')
-        + '</tbody></table></div>'
-      + '</div></div>';
+      + '<div class="alt-lines-grid">'
+      + alts.map(function(a){
+          var isMain = a.line === mainLine;
+          return '<div class="alt-row'+(isMain?' main-line':'')+'">'
+            +'<span class="alt-num">'+a.line+'</span>'
+            +'<span class="alt-odds over">'+a.overOdds+'</span>'
+            +'<span class="alt-odds under">'+a.underOdds+'</span>'
+          +'</div>';
+        }).join('')
+      + '</div>'
+    + '</div>';
   });
-  document.getElementById('altlines-content').innerHTML = html || '<div style="color:var(--muted);padding:20px;text-align:center">No props loaded yet.</div>';
+  var el = document.getElementById('altlines-content');
+  if (el) el.innerHTML = '<div class="alt-grid">'+html+'</div>';
 }
 
-function mkBk(key,name,line,odds,mainLine,dir) {
-  var isBest = line != null && dir==='over' && line <= mainLine;
-  return '<div class="bk'+(isBest?' best-line':'')+'"><div class="bkname '+key+'">'+name+'</div><div class="bknum">'+(line!=null?line:'--')+'</div><div class="bkodds">'+(odds||'--')+'</div></div>';
-}
-
-function calcEdge(odds) {
-  if (!odds) return '--';
-  var n = parseInt(odds.replace('+',''));
-  if (isNaN(n)) return '--';
-  var imp = n > 0 ? 100/(n+100) : Math.abs(n)/(Math.abs(n)+100);
-  return (imp*100).toFixed(0)+'% imp';
-}
-
-function filterAlt(type,btn) {
-  document.querySelectorAll('.fbtn').forEach(function(b){ b.classList.remove('active'); });
-  btn.classList.add('active');
-  document.querySelectorAll('.alt-card').forEach(function(c){
-    c.style.display=(type==='all'||c.dataset.altType===type)?'':'none';
-  });
-}
-
+// ── LIVE ─────────────────────────────────────────
 async function loadLive() {
   try {
-    var gr = await fetch('/api/games'); var gd = await gr.json();
-    var live = (gd.games||[]).filter(function(g){ return g.status==='live'; });
-    var pr = await fetch('/api/props'); var pd = await pr.json();
-    var props = (pd.props||[]).slice(0,12);
-    var html = live.length
-      ? '<p style="color:var(--muted);font-size:12px;margin-bottom:10px">'+live.length+' game(s) in progress.</p>'
-      : '<p style="color:var(--muted);font-size:12px;margin-bottom:10px">No games live yet. Showing pre-game lines.</p>';
-    html += '<div class="live-grid">';
-    props.forEach(function(p) {
-      var w = 35 + Math.round((p.confidence||50)*0.55);
-      html += '<div class="lbet"><div class="lbet-name">'+p.playerName+'</div><div class="lbet-stat">'+cap(p.statType)+' '+(p.direction||'over').toUpperCase()+' '+(p.line||'?')+'</div><div class="lbet-odds">DK: '+(p.dkOdds||'--')+' &nbsp;|&nbsp; PP: '+(p.ppLine||p.line||'?')+'</div><div class="lbet-prog">'+(p.confidence>=75?'🟢':p.confidence>=55?'🟡':'🔴')+' '+(p.confidence||60)+'% confidence</div><div class="lmeter"><div class="lfill" style="width:'+w+'%"></div></div></div>';
+    var r = await fetch('/api/games');
+    var d = await r.json();
+    if (!d.success) return;
+    var live = (d.games||[]).filter(function(g){ return g.status==='live'; });
+    var el = document.getElementById('live-content');
+    if (!el) return;
+    if (!live.length) { el.innerHTML='<div class="err-box"><h3>No Live Games</h3><p>Check back when games tip off.</p></div>'; return; }
+    var html = '<div class="games-grid">';
+    live.forEach(function(g){
+      html += '<div class="game-card live-game">'
+        +'<div class="gc-head"><span class="gc-time">'+g.quarter+' '+g.clock+'</span><span class="gc-live">● LIVE</span></div>'
+        +'<div class="matchup">'
+          +'<div class="team"><div class="team-abbr">'+g.awayTeam+'</div><div class="team-score">'+g.awayScore+'</div></div>'
+          +'<div class="vs-mid"><div class="vs-at">@</div></div>'
+          +'<div class="team"><div class="team-abbr">'+g.homeTeam+'</div><div class="team-score">'+g.homeScore+'</div></div>'
+        +'</div>'
+      +'</div>';
     });
-    html += '</div>';
-    document.getElementById('live-content').innerHTML = html;
-  } catch(e) { showErr('live', e.message); }
+    el.innerHTML = html + '</div>';
+  } catch(e) {}
 }
 
-async function lookupH2H() {
-  var t1 = document.getElementById('h2h-t1').value;
-  var t2 = document.getElementById('h2h-t2').value;
-  if (!t1||!t2||t1===t2) { showToast('Pick two different teams!'); return; }
-  document.getElementById('h2h-result').innerHTML = '<div class="loader-box" style="padding:30px"><div class="sp">🕷️</div><div class="lt">Searching...</div></div>';
+// ── H2H ──────────────────────────────────────────
+function populateH2H() {
+  var t1 = document.getElementById('h2h-t1');
+  var t2 = document.getElementById('h2h-t2');
+  if (!t1 || !t2) return;
+  t1.addEventListener('keydown', function(e){ if(e.key==='Enter') loadH2H(); });
+  t2.addEventListener('keydown', function(e){ if(e.key==='Enter') loadH2H(); });
+}
+
+async function loadH2H() {
+  var t1 = (document.getElementById('h2h-t1')||{}).value || '';
+  var t2 = (document.getElementById('h2h-t2')||{}).value || '';
+  if (!t1||!t2) { showToast('Enter both team abbreviations'); return; }
+  var el = document.getElementById('h2h-content');
+  if (el) el.innerHTML = '<div class="loader-box"><div class="sp">⚔️</div><div class="lt">Loading H2H...</div></div>';
   try {
-    var r = await fetch('/api/h2h/'+t1+'/'+t2); var d = await r.json();
-    if (!d.success||!d.h2h) { document.getElementById('h2h-result').innerHTML='<div class="err-box"><h3>No Data</h3><p>No matchup history found.</p></div>'; return; }
+    var r = await fetch('/api/h2h/'+t1.toUpperCase()+'/'+t2.toUpperCase());
+    var d = await r.json();
+    if (!d.success||!d.h2h) { if(el)el.innerHTML='<div class="err-box"><h3>Not Found</h3><p>Check team abbreviations (e.g. LAL, BOS)</p></div>'; return; }
     var h = d.h2h;
-    var html = '<div class="h2h-result-card">'
-      + '<div class="h2h-header">'
-        + '<div class="h2h-tb"><div class="h2h-tn">'+(EMOJI[t1]||'')+' '+t1+'</div><div class="h2h-tw">'+h.team1Wins+' wins</div></div>'
-        + '<div style="text-align:center;font-family:\'Bebas Neue\',cursive;font-size:20px;color:var(--muted)">L'+h.last5Games.length+'</div>'
-        + '<div class="h2h-tb"><div class="h2h-tn">'+(EMOJI[t2]||'')+' '+t2+'</div><div class="h2h-tw">'+h.team2Wins+' wins</div></div>'
-      + '</div>'
-      + (h.last5Games||[]).map(function(g){ return '<div class="h2h-row"><span>'+g.date+'</span><span class="h2h-w">W: '+g.winner+'</span><span>'+g.score+'</span><span style="color:var(--muted)">'+g.location+'</span></div>'; }).join('')
-    + '</div>';
-    document.getElementById('h2h-result').innerHTML = html;
-  } catch(e) { document.getElementById('h2h-result').innerHTML='<div class="err-box"><h3>Error</h3><p>'+e.message+'</p></div>'; }
+    var html = '<div class="h2h-result">'
+      +'<div class="h2h-score-row"><span class="h2h-team">'+h.team1+'</span><span class="h2h-vs">vs</span><span class="h2h-team">'+h.team2+'</span></div>'
+      +'<div class="h2h-record"><span>'+h.team1Wins+' W</span><span class="h2h-dash">—</span><span>'+h.team2Wins+' W</span></div>'
+      +'<div class="h2h-games">';
+    (h.last5Games||[]).forEach(function(g){
+      html += '<div class="h2h-row"><span>'+g.date+'</span><span>'+g.matchup+'</span><span class="badge '+(g.winner===h.team1?'b-elite':'b-fade')+'">'+g.winner+'</span><span>'+g.score+'</span></div>';
+    });
+    html += '</div></div>';
+    if (el) el.innerHTML = html;
+  } catch(e) { if(el)el.innerHTML='<div class="err-box"><h3>Error</h3><p>'+e.message+'</p></div>'; }
 }
 
+// ── PARLAYS ──────────────────────────────────────
 async function loadParlays() {
-  try {
-    var r = await fetch('/api/props'); var d = await r.json();
-    var props  = d.props || [];
-    var elite  = props.filter(function(p){ return p.tier==='elite'; }).slice(0,5);
-    var strong = props.filter(function(p){ return p.tier==='strong'; }).slice(0,4);
-    var fade   = props.filter(function(p){ return p.tier==='fade'; }).slice(0,3);
-    var html = '<div class="parlay-grid">';
-    if (elite.length>=2) html += mkParlay('🕸️ Safe Web (2-Leg DK)', elite.slice(0,2));
-    if (elite.length>=3) html += mkParlay('🔥 Value Builder (3-Leg)', elite.slice(0,3));
-    if (elite.length+strong.length>=4) html += mkParlay('⚡ Power 4 (PrizePicks)', [...elite.slice(0,2),...strong.slice(0,2)]);
-    if (elite.length+strong.length>=5) html += mkParlay('🌐 Flex 5 (PrizePicks)', [...elite.slice(0,3),...strong.slice(0,2)]);
-    if (fade.length>=2) {
-      html += '<div class="parl-card" style="border-top-color:var(--fade)"><div class="parl-title" style="color:var(--fade)">🚫 AVOID — Fade Parlay</div>'
-        + fade.map(function(p,i){ return '<div class="parl-leg"><span class="legn" style="color:var(--fade)">✗</span>'+p.playerName+' '+cap(p.statType)+' '+(p.direction||'over').toUpperCase()+' '+p.line+'</div>'; }).join('')
-        + '<div class="parl-foot"><div><div class="po-lbl">Rating</div><div class="po-val" style="color:var(--fade)">AVOID</div></div><span class="badge b-fade">FADE</span></div></div>';
-    }
-    if (html==='<div class="parlay-grid">') html += '<div style="color:var(--muted);padding:20px;text-align:center;font-size:12px">Parlays load once props are available.</div>';
-    document.getElementById('parlays-content').innerHTML = html + '</div>';
-  } catch(e) { showErr('parlays', e.message); }
+  var el = document.getElementById('parlays-content');
+  if (!el) return;
+  if (!allProps.length) { await loadProps(); }
+  var elite = allProps.filter(function(p){ return p.tier==='elite'; }).slice(0,6);
+  if (!elite.length) { el.innerHTML='<div class="err-box"><h3>Add picks to build parlays</h3></div>'; return; }
+  var combos = [];
+  for (var i=0;i<elite.length;i++) for(var j=i+1;j<elite.length;j++) {
+    var p = (elite[i].confidence/100)*(elite[j].confidence/100);
+    combos.push({ legs:[elite[i],elite[j]], prob:Math.round(p*100) });
+  }
+  combos.sort(function(a,b){ return b.prob-a.prob; });
+  var html = '<div class="parlay-grid">';
+  combos.slice(0,6).forEach(function(c){
+    var payout = Math.round(((1/(c.prob/100))-1)*100);
+    html += '<div class="parlay-card">'
+      +'<div class="parlay-legs">'+c.legs.map(function(l){ return '<div class="parlay-leg">'+l.playerName+' '+cap(l.statType)+' O'+l.dkLine+'</div>'; }).join('')+'</div>'
+      +'<div class="parlay-foot"><span class="parlay-prob">'+c.prob+'%</span><span class="parlay-pay">+$'+payout+' on $100</span></div>'
+    +'</div>';
+  });
+  el.innerHTML = html + '</div>';
 }
 
-function mkParlay(title,picks) {
-  var prob = picks.reduce(function(a,p){ return a*(p.confidence/100); },1);
-  var pct  = Math.round(prob*100);
-  var out  = '+$'+Math.round(((1/prob)-1)*100).toLocaleString();
-  return '<div class="parl-card"><div class="parl-title">'+title+'</div>'
-    + picks.map(function(p,i){ return '<div class="parl-leg"><span class="legn">'+(i+1)+'</span>'+p.playerName+' '+cap(p.statType)+' '+(p.direction||'over').toUpperCase()+' '+(p.line||'?')+' (DK '+(p.dkOdds||'')+')</div>'; }).join('')
-    + '<div class="parl-foot"><div><div class="po-lbl">Prob ~'+pct+'% · Payout</div><div class="po-val">'+out+'</div></div><span class="badge b-strong">STRONG</span></div></div>';
-}
-
+// ── INJURIES ─────────────────────────────────────
 async function loadInjuries() {
   try {
-    var r = await fetch('/api/injuries'); var d = await r.json();
-    if (!d.injuries.length) { document.getElementById('injuries-content').innerHTML='<div style="color:var(--muted);padding:20px;text-align:center">No injuries reported today. 🟢</div>'; return; }
-    
-    // Build game filter buttons from today's games
+    var r = await fetch('/api/injuries');
+    var d = await r.json();
+    var el = document.getElementById('injuries-content');
+    if (!el) return;
+    var injuries = d.injuries || [];
+
+    // Build game filter buttons
     var games = window._liveGames || [];
     var gameFilterEl = document.getElementById('injury-game-filters');
     if (gameFilterEl && games.length) {
       var btns = '<button class="fbtn active" style="font-size:10px;padding:5px 10px" onclick="filterInjuryGame(\'all\',this)">All Games</button>';
       games.forEach(function(g) {
-        var key = (g.awayTeam + '_' + g.homeTeam).toLowerCase();
-        var label = g.awayTeam + ' @ ' + g.homeTeam;
-        btns += '<button class="fbtn" style="font-size:10px;padding:5px 10px" onclick="filterInjuryGame(\''+key+'\',this)">'+label+'</button>';
+        var key = (g.awayTeam+'_'+g.homeTeam).toLowerCase();
+        btns += '<button class="fbtn" style="font-size:10px;padding:5px 10px" onclick="filterInjuryGame(\''+key+'\',this)">'+g.awayTeam+' @ '+g.homeTeam+'</button>';
       });
       gameFilterEl.innerHTML = btns;
     }
 
+    if (!injuries.length) { el.innerHTML='<div class="err-box"><h3>No Injuries</h3><p>Injury data updates throughout the day.</p></div>'; return; }
     var html = '<div class="inj-grid">';
-    d.injuries.forEach(function(inj) {
+    injuries.forEach(function(inj) {
       var s = (inj.status||'').toLowerCase();
       var ic = s.includes('out')?'ic-out':s.includes('quest')?'ic-q':'ic-dtd';
-      // Find which game this player is in
       var playerTeam = (inj.team||'').toUpperCase();
       var gameKey = 'all';
       games.forEach(function(g) {
-        if (g.awayTeam === playerTeam || g.homeTeam === playerTeam) {
-          gameKey = (g.awayTeam + '_' + g.homeTeam).toLowerCase();
-        }
+        if (g.awayTeam===playerTeam||g.homeTeam===playerTeam) gameKey=(g.awayTeam+'_'+g.homeTeam).toLowerCase();
       });
-      html += '<div class="inj-card '+(s.includes('quest')?'q':s.includes('prob')?'prob':'')+' inj-row" data-status="'+s+'" data-game="'+gameKey+'" data-team="'+playerTeam.toLowerCase()+'">'
-        + '<div class="inj-name">'+inj.playerName+'<span class="inj-chip '+ic+'">'+inj.status+'</span></div>'
-        + '<div class="inj-team">'+inj.team+' · '+(inj.injury||'')+'</div>'
-        + '<div class="inj-imp">'+(inj.bettingImpact||'Monitor situation.')+'</div>'
-      + '</div>';
+      html += '<div class="inj-card '+(s.includes('quest')?'q':s.includes('prob')?'pr':s.includes('out')?'out':'')+'" data-status="'+s+'" data-game="'+gameKey+'">'
+        +'<div class="inj-name">'+inj.playerName+'<span class="inj-chip '+ic+'">'+inj.status+'</span></div>'
+        +'<div class="inj-team">'+inj.team+' · '+(inj.injury||'')+'</div>'
+        +'<div class="inj-imp">'+(inj.bettingImpact||'Monitor situation.')+'</div>'
+      +'</div>';
     });
-    document.getElementById('injuries-content').innerHTML = html + '</div>';
+    el.innerHTML = html + '</div>';
   } catch(e) { showErr('injuries', e.message); }
 }
 
+// ── TICKER ───────────────────────────────────────
 function updateTicker(games) {
   var items = [];
   games.forEach(function(g) {
     if (g.status==='live') items.push('<div class="tick"><span class="dot"></span>LIVE: '+g.awayTeam+' '+g.awayScore+' – '+g.homeTeam+' '+g.homeScore+' · '+g.quarter+' '+g.clock+'</div>');
     else if (g.status==='scheduled') items.push('<div class="tick"><span class="dot"></span>'+g.awayTeam+' @ '+g.homeTeam+' · '+g.tipoff+' · Spread: '+g.spread+'</div>');
+    else if (g.status==='final') items.push('<div class="tick"><span class="dot"></span>FINAL: '+g.awayTeam+' '+g.awayScore+' – '+g.homeTeam+' '+g.homeScore+'</div>');
   });
-  if (items.length) document.getElementById('ticker-inner').innerHTML = items.concat(items).join('');
+  var el = document.getElementById('ticker-inner');
+  if (el && items.length) el.innerHTML = items.concat(items).join('');
 }
 
-// ── PICK SLIP ─────────────────────────────────────
-function openSlip() {
-  document.getElementById('mobile-slip-overlay').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-function closeSlip() {
-  document.getElementById('mobile-slip-overlay').style.display = 'none';
-  document.body.style.overflow = '';
-}
-
+// ── PICK SLIP ────────────────────────────────────
 function addPick(btn, label, name, game, conf, type, nbaId, pickId) {
-  if (slipPicks.length>=8) { showToast('Max 8 picks!'); return; }
+  if (slipPicks.length >= 8) { showToast('Max 8 picks!'); return; }
   var pid = pickId || (nbaId+'_'+type);
-  if (slipPicks.find(function(p){ return p.pickId===pid; })) { showToast('Already in slip!'); return; }
-  slipPicks.push({ pickId:pid, label:label, name:name, game:game, conf:parseInt(conf,10)||60, type:type, nbaId:nbaId });
-  // Update mini badge
-  var _activeTab = document.querySelector('.tab-content.active');
-  var _miniBtn = document.getElementById('mini-slip-btn');
-  if (_activeTab && _activeTab.id !== 'tab-props' && _miniBtn) {
-    _miniBtn.style.display = 'flex';
-    var _badge = document.getElementById('mini-slip-count');
-    if (_badge) _badge.textContent = slipPicks.length;
-  }
-  btn.dataset.pickId = pid;
+  if (slipPicks.find(function(p){ return p.pickId===pid; })) { showToast('Already added!'); return; }
+  slipPicks.push({ pickId:pid, label:label, name:name, game:game, conf:parseInt(conf), type:type, nbaId:nbaId });
   btn.classList.add('added');
   btn.textContent = '✓ Added';
   btn.disabled = true;
   renderSlip();
-  updateMobileBtn();
+  updateBankrollUI();
   showToast('✓ '+name+' added!');
+  // Show mini badge on non-props tabs
+  var active = document.querySelector('.tab-content.active');
+  if (active && active.id !== 'tab-props') {
+    var mini = document.getElementById('mini-slip-btn');
+    if (mini) { mini.style.display='flex'; }
+    var badge = document.getElementById('mini-slip-count');
+    if (badge) badge.textContent = slipPicks.length;
+  }
 }
 
 function removePick(pid) {
   slipPicks = slipPicks.filter(function(p){ return p.pickId!==pid; });
   document.querySelectorAll('.btn-add-pick').forEach(function(b){
-    if (b.dataset.pickId===pid) { b.classList.remove('added'); b.textContent='＋ Add to Slip'; b.disabled=false; b.dataset.pickId=''; }
+    if (b.dataset && b.dataset.pickId===pid) { b.classList.remove('added'); b.textContent='＋ Add to Slip'; b.disabled=false; }
   });
   renderSlip();
-  updateMobileBtn();
-}
-
-function updateMobileBtn() {
-  var btn = document.getElementById('mobile-slip-btn');
-  if (!btn) return;
-  if (slipPicks.length > 0) {
-    btn.style.display = 'flex';
-    btn.querySelector('.slip-count').textContent = slipPicks.length;
-  } else {
-    btn.style.display = 'none';
-  }
+  updateBankrollUI();
 }
 
 function renderSlip() {
-  // Render in both desktop panel and mobile overlay
-  ['slip-empty','slip-empty-mobile'].forEach(function(id,i) {
-    var prefix = i===0 ? '' : '-mobile';
-    var emEl = document.getElementById('slip-empty'+prefix);
-    var liEl = document.getElementById('slip-list'+prefix);
-    var caEl = document.getElementById('slip-calc'+prefix);
-    var aiEl = document.getElementById('slip-ai'+prefix);
+  ['','mobile'].forEach(function(sfx) {
+    var pfx = sfx ? '-'+sfx : '';
+    var emEl = document.getElementById('slip-empty'+pfx);
+    var liEl = document.getElementById('slip-list'+pfx);
+    var caEl = document.getElementById('slip-calc'+pfx);
     if (!emEl||!liEl||!caEl) return;
-    if (aiEl) { aiEl.style.display='none'; aiEl.textContent=''; }
     if (!slipPicks.length) {
       emEl.style.display='block'; liEl.style.display='none'; liEl.innerHTML=''; caEl.style.display='none'; return;
     }
@@ -461,495 +418,267 @@ function renderSlip() {
     slipPicks.forEach(function(p) {
       var col=p.conf>=80?'#FFD700':p.conf>=65?'#00D4AA':p.conf>=50?'#60a5fa':'#ff5555';
       html+='<div class="slip-leg">'
-        +'<div class="slip-av"><img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+p.nbaId+'.png" onerror="this.style.display=\'none\'"></div>'
-        +'<div class="slip-li"><div class="slip-ln">'+p.name+'</div><div class="slip-ls">'+p.label+'</div></div>'
-        +'<div class="slip-lc" style="color:'+col+'">'+p.conf+'%</div>'
+        +'<div class="slip-av"><img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+p.nbaId+'.png" onerror="this.style.display=\'none\'" style="width:32px;height:32px;border-radius:50%;object-fit:cover"></div>'
+        +'<div class="slip-li"><div class="slip-ln">'+p.name+'</div><div class="slip-ll" style="font-size:10px;color:var(--muted)">'+p.label+'</div></div>'
+        +'<div class="slip-lc" style="color:'+col+';font-weight:700;font-size:12px">'+p.conf+'%</div>'
         +'<button class="slip-rm" onclick="removePick(\''+p.pickId+'\')">✕</button>'
       +'</div>';
     });
     liEl.innerHTML=html;
-    updateCalc(prefix);
+    updateCalc(pfx);
   });
 }
 
-function updateCalc(prefix) {
-  prefix = prefix || '';
-  var n=slipPicks.length; if(!n) return;
+function updateCalc(pfx) {
+  pfx = pfx||'';
+  var n=slipPicks.length; if(!n)return;
   var raw=slipPicks.reduce(function(a,p){return a*p.conf/100;},1);
   var games=slipPicks.map(function(p){return p.game;});
   var dupe=games.some(function(g,i){return games.indexOf(g)!==i;});
-  var warn=document.getElementById('slip-warn'+prefix);
-  if(warn) warn.style.display=dupe?'block':'none';
+  var warn=document.getElementById('slip-warn'+pfx);
+  if(warn)warn.style.display=dupe?'block':'none';
   var prob=dupe?raw*0.92:raw;
   var pct=Math.max(1,Math.round(prob*100));
-  var pctEl=document.getElementById('slip-pct'+prefix);
-  var barEl=document.getElementById('slip-bar'+prefix);
-  var tierEl=document.getElementById('slip-tier'+prefix);
-  var dkEl=document.getElementById('slip-dk'+prefix);
-  var ppEl=document.getElementById('slip-pp'+prefix);
-  var frmEl=document.getElementById('slip-formula'+prefix);
-  if(pctEl) pctEl.textContent=pct+'%';
-  if(barEl) barEl.style.width=Math.min(pct,100)+'%';
+  var pctEl=document.getElementById('slip-pct'+pfx);
+  var barEl=document.getElementById('slip-bar'+pfx);
+  var tierEl=document.getElementById('slip-tier'+pfx);
+  var dkEl=document.getElementById('slip-dk'+pfx);
+  var ppEl=document.getElementById('slip-pp'+pfx);
+  var frmEl=document.getElementById('slip-formula'+pfx);
+  if(pctEl)pctEl.textContent=pct+'%';
+  if(barEl)barEl.style.width=Math.min(pct,100)+'%';
   if(tierEl){
     tierEl.className='slip-tier';
     if(pct>=65){tierEl.textContent='🔥 ELITE SLIP';tierEl.classList.add('elite');}
     else if(pct>=45){tierEl.textContent='✅ STRONG SLIP';tierEl.classList.add('strong');}
-    else if(pct>=25){tierEl.textContent='⚡ NEUTRAL — Moderate risk';tierEl.classList.add('neutral');}
-    else{tierEl.textContent='⚠️ FADE RISK — Lottery ticket';tierEl.classList.add('fade');}
+    else if(pct>=25){tierEl.textContent='⚡ NEUTRAL';tierEl.classList.add('neutral');}
+    else{tierEl.textContent='⚠️ FADE RISK';tierEl.classList.add('fade');}
   }
-  if(dkEl) dkEl.textContent='+$'+Math.round(((1/prob)-1)*100).toLocaleString();
-  if(ppEl) ppEl.textContent=n+'-Leg '+(n<=4?'Power':'Flex');
-  if(frmEl) frmEl.textContent=slipPicks.map(function(p){return p.name.split(' ').slice(-1)[0]+'('+p.conf+'%)';}).join(' × ')+' = '+pct+'%';
+  if(dkEl)dkEl.textContent='+$'+Math.round(((1/prob)-1)*100).toLocaleString();
+  if(ppEl)ppEl.textContent=n+'-Leg '+(n<=4?'Power':'Flex');
+  if(frmEl)frmEl.textContent=slipPicks.map(function(p){return p.name.split(' ').slice(-1)[0]+'('+p.conf+'%)';}).join(' × ')+' = '+pct+'%';
 }
 
-// ── FIX: AI analyze sends real pick data ──────────
-// ── BANKROLL / PAYROLL SYSTEM ──
-var bankrollAmount = parseFloat(localStorage.getItem('bbp_bankroll') || '0');
+async function analyzeSlip(prefix) {
+  prefix = prefix||'';
+  if(!slipPicks.length){showToast('Add picks first!');return;}
+  var btn = document.querySelector('.slip-ai-btn');
+  if(btn){btn.disabled=true;btn.textContent='🕷️ Analyzing...';}
+  try {
+    var r = await fetch('/api/analysis/slip',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ picks:slipPicks.map(function(p){ return {playerName:p.name,confidence:p.conf,statType:p.type,label:p.label}; }) })
+    });
+    var d = await r.json();
+    var el = document.getElementById('slip-ai'+prefix);
+    if(el){el.textContent=d.analysis||'Analysis unavailable.';el.style.display='block';}
+  } catch(e){showToast('AI error');}
+  if(btn){btn.disabled=false;btn.textContent='🤖 AI Analyze Slip';}
+}
 
+function clearSlip(prefix) {
+  prefix=prefix||'';
+  slipPicks=[];
+  document.querySelectorAll('.btn-add-pick.added').forEach(function(b){
+    b.classList.remove('added');b.textContent='＋ Add to Slip';b.disabled=false;
+  });
+  renderSlip();
+  updateBankrollUI();
+}
+
+function openSlip(){  document.getElementById('mobile-slip-overlay').style.display='flex'; document.body.style.overflow='hidden'; }
+function closeSlip(){ document.getElementById('mobile-slip-overlay').style.display='none'; document.body.style.overflow=''; }
+
+// ── BANKROLL SYSTEM ──────────────────────────────
 function setBankroll(val) {
-  bankrollAmount = parseFloat(val) || 0;
-  localStorage.setItem('bbp_bankroll', bankrollAmount);
+  bankrollAmount = parseFloat(val)||0;
+  try { localStorage.setItem('bbp_bankroll', bankrollAmount); } catch(e){}
   updateBankrollUI();
 }
 
 function updateBankrollUI() {
-  var br = bankrollAmount;
-  if (!br || br <= 0) return;
-  var slip = window._currentSlip || [];
-  var pct = slipProbability(slip);
-
-  // Kelly criterion bet sizing (fractional Kelly at 25% for safety)
-  // Full Kelly = (p*b - q) / b where b = decimal odds - 1
-  // We simplify: bet 1-4% of bankroll based on combined confidence
-  var betPct, betLabel, rationale;
-  if (pct >= 70) {
-    betPct = 0.04; betLabel = '4% (Strong Edge)'; rationale = 'High confidence — full unit';
-  } else if (pct >= 60) {
-    betPct = 0.03; betLabel = '3% (Moderate Edge)'; rationale = 'Solid play — standard unit';
-  } else if (pct >= 50) {
-    betPct = 0.02; betLabel = '2% (Lean)'; rationale = 'Slight edge — half unit';
-  } else if (pct >= 35) {
-    betPct = 0.01; betLabel = '1% (Parlay Risk)'; rationale = 'Low prob parlay — min unit';
-  } else {
-    betPct = 0; betLabel = 'Skip'; rationale = 'Below threshold — do not bet';
-  }
-
-  var suggestedBet = Math.max(1, Math.round(br * betPct * 100) / 100);
-  var legs = slip.length;
-
-  // Parlay suggestions based on bankroll size
-  var parlayTiers = [];
-  if (br >= 100) {
-    parlayTiers.push({ legs:2, bet: Math.round(br*0.03), label:'2-Leg · 3% stake' });
-    parlayTiers.push({ legs:3, bet: Math.round(br*0.02), label:'3-Leg · 2% stake' });
-    if (br >= 500) parlayTiers.push({ legs:4, bet: Math.round(br*0.01), label:'4-Leg · 1% stake (lottery)' });
-  } else if (br >= 20) {
-    parlayTiers.push({ legs:2, bet: Math.max(1, Math.round(br*0.05)), label:'2-Leg · 5% stake' });
-    parlayTiers.push({ legs:3, bet: Math.max(1, Math.round(br*0.02)), label:'3-Leg · 2% stake' });
-  } else {
-    parlayTiers.push({ legs:2, bet: Math.max(1, Math.round(br*0.1)), label:'2-Leg · 10% stake (micro)' });
-  }
-
   var el = document.getElementById('bankroll-recommendation');
-  if (!el) return;
-
-  var parlayHtml = parlayTiers.map(function(t) {
-    return '<div class="br-parlay-row"><span class="br-legs">'+t.legs+'-Leg Parlay</span><span class="br-bet">$'+t.bet+' · '+t.label+'</span></div>';
-  }).join('');
-
+  if (!el || !bankrollAmount) return;
+  var raw = slipPicks.reduce(function(a,p){return a*p.conf/100;},1);
+  var pct = slipPicks.length ? Math.round(raw*100) : 0;
+  var betPct, betLabel;
+  if(pct>=70){betPct=0.04;betLabel='4% — Strong Edge';}
+  else if(pct>=60){betPct=0.03;betLabel='3% — Moderate Edge';}
+  else if(pct>=50){betPct=0.02;betLabel='2% — Lean';}
+  else if(pct>=35){betPct=0.01;betLabel='1% — Parlay Risk';}
+  else{betPct=0;betLabel='Skip — below threshold';}
+  var bet = Math.max(1,Math.round(bankrollAmount*betPct));
+  var p2 = Math.max(1,Math.round(bankrollAmount*0.03));
+  var p3 = Math.max(1,Math.round(bankrollAmount*0.02));
   el.innerHTML = '<div class="br-box">'
-    + '<div class="br-title">💰 Bankroll: $'+br.toFixed(0)+'</div>'
-    + (pct > 0 ? '<div class="br-rec"><div class="br-rec-lbl">Current Slip ('+legs+' leg'+(legs!==1?'s':'')+' · '+pct+'%)</div>'
-      + '<div class="br-bet-main">Bet $<strong>'+suggestedBet.toFixed(0)+'</strong> · '+betLabel+'</div>'
-      + '<div class="br-rationale">'+rationale+'</div></div>' : '')
-    + '<div class="br-parlays"><div class="br-parlays-title">📋 Suggested Stakes by Leg Count</div>'+parlayHtml+'</div>'
-    + '</div>';
+    +'<div class="br-title">💰 Bankroll: $'+bankrollAmount.toFixed(0)+'</div>'
+    +(pct>0?'<div class="br-rec"><div class="br-rec-lbl">Current slip ('+slipPicks.length+' legs · '+pct+'%)</div>'
+      +'<div class="br-bet-main">Bet $<strong>'+bet+'</strong> · '+betLabel+'</div></div>':'')
+    +'<div class="br-parlays"><div class="br-parlays-title">📋 Suggested by leg count</div>'
+      +'<div class="br-parlay-row"><span class="br-legs">2-Leg</span><span class="br-bet">$'+p2+' · 3% stake</span></div>'
+      +'<div class="br-parlay-row"><span class="br-legs">3-Leg</span><span class="br-bet">$'+p3+' · 2% stake</span></div>'
+      +'<div class="br-parlay-row"><span class="br-legs">4-Leg+</span><span class="br-bet">$'+Math.max(1,Math.round(bankrollAmount*0.01))+' · 1% stake</span></div>'
+    +'</div></div>';
 }
 
-function slipProbability(slip) {
-  if (!slip || !slip.length) return 0;
-  var p = slip.reduce(function(acc, pick) { return acc * ((pick.conf||60)/100); }, 1);
-  return Math.round(p * 100);
-}
-
-async function analyzeSlip(prefix) {
-  prefix = prefix || '';
-  if(!slipPicks.length){showToast('Add picks first!');return;}
-
-  // Build a clean readable list for Claude
-  var pickList = slipPicks.map(function(p) {
-    return p.name + ' — ' + p.type + ' ' + p.label.split(' ').slice(-2).join(' ') + ' (' + p.conf + '% confidence, ' + p.game + ')';
-  });
-
-  var btn = document.querySelector('.slip-ai-btn'+(prefix?'[data-prefix="'+prefix+'"]':''));
-  if(btn){ btn.disabled=true; btn.textContent='🕷️ Analyzing...'; }
-
-  try {
-    var r = await fetch('/api/analysis/slip', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        picks: slipPicks.map(function(p) {
-          return {
-            playerName:  p.name,
-            confidence:  p.conf,
-            statType:    p.type,
-            label:       p.label,
-            game:        p.game,
-            direction:   p.label.toLowerCase().includes('under') ? 'under' : 'over',
-            line:        parseFloat(p.label.match(/[\d.]+/)?.[0]) || 0
-          };
-        })
-      })
-    });
-    var d = await r.json();
-    var el = document.getElementById('slip-ai'+prefix);
-    if(el){
-      el.textContent = d.analysis || 'Analysis unavailable.';
-      el.style.display = 'block';
-      el.style.overflowY = 'auto';
-      el.style.maxHeight = '160px';
-    }
-  } catch(e){ showToast('AI error: '+e.message); }
-
-  if(btn){ btn.disabled=false; btn.textContent='🕷️ AI Analyze Slip'; }
-}
-
-function clearSlip(prefix) {
-  prefix = prefix || '';
-  slipPicks=[];
-  document.querySelectorAll('.btn-add-pick.added').forEach(function(b){
-    b.classList.remove('added'); b.textContent='＋ Add to Slip'; b.disabled=false; b.dataset.pickId='';
-  });
-  ['','mobile'].forEach(function(sfx) {
-    var p = sfx ? '-'+sfx : '';
-    var em=document.getElementById('slip-empty'+p); if(em) em.style.display='block';
-    var li=document.getElementById('slip-list'+p); if(li){li.style.display='none';li.innerHTML='';}
-    var ca=document.getElementById('slip-calc'+p); if(ca) ca.style.display='none';
-    var ai=document.getElementById('slip-ai'+p); if(ai) ai.style.display='none';
-  });
-  updateMobileBtn();
-}
-
-function showTab(id,el){
+// ── TAB SWITCHING ────────────────────────────────
+function showTab(id, el) {
   event.preventDefault();
   document.querySelectorAll('.tab-content').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('nav a').forEach(function(a){a.classList.remove('active');});
-  if (!id || !document.getElementById(id)) return;
+  if (!id||!document.getElementById(id)) return;
   document.getElementById(id).classList.add('active');
   if (el) el.classList.add('active');
 
-  var layout = document.querySelector('.main-layout');
-  var slip = document.querySelector('.slip-panel');
-  var miniSlip = document.getElementById('mini-slip-btn');
+  var layout  = document.querySelector('.main-layout');
+  var slip    = document.querySelector('.slip-panel');
+  var miniBtn = document.getElementById('mini-slip-btn');
 
   if (id === 'tab-props') {
-    // Props tab: two-column layout with slip on the RIGHT
     if (layout) layout.style.gridTemplateColumns = '1fr 330px';
-    if (slip) { slip.style.display = 'block'; slip.style.position = 'sticky'; slip.style.top = '115px'; }
-    if (miniSlip) miniSlip.style.display = 'none';
-    document.body.classList.add('props-tab-active');
-    if (allProps && allProps.length) buildPropsGameFilter(allProps);
+    if (slip)   { slip.style.display = 'block'; }
+    if (miniBtn) miniBtn.style.display = 'none';
+    if (allProps.length) buildPropsGameFilter(allProps);
   } else {
-    // All other tabs: full width, hide side slip, show mini badge in header
     if (layout) layout.style.gridTemplateColumns = '1fr';
-    if (slip) slip.style.display = 'none';
-    var count = (slipPicks || []).length;
-    if (miniSlip) {
-      miniSlip.style.display = count > 0 ? 'flex' : 'none';
+    if (slip)   slip.style.display = 'none';
+    var count = slipPicks.length;
+    if (miniBtn) {
+      miniBtn.style.display = count > 0 ? 'flex' : 'none';
       var badge = document.getElementById('mini-slip-count');
       if (badge) badge.textContent = count;
     }
-    document.body.classList.remove('props-tab-active');
   }
 }
 
-var _propFilterType = 'all';
-var _propSearchText = '';
+var slipPanelCollapsed = false;
+function toggleSlipPanel() {
+  slipPanelCollapsed = !slipPanelCollapsed;
+  var body = document.getElementById('slip-body-collapsible');
+  var icon = document.getElementById('slip-toggle-icon');
+  if (body) body.style.display = slipPanelCollapsed ? 'none' : '';
+  if (icon) icon.style.transform = slipPanelCollapsed ? 'rotate(-90deg)' : '';
+}
 
-function filterProps(type,btn){
-  document.querySelectorAll('.fbtn').forEach(function(b){b.classList.remove('active');});
-  btn.classList.add('active');
+// ── FILTERS ──────────────────────────────────────
+function filterProps(type, btn) {
+  document.querySelectorAll('.filter-bar .fbtn').forEach(function(b){b.classList.remove('active');});
+  if (btn) btn.classList.add('active');
   _propFilterType = type;
   applyPropsFilter();
 }
 
-function searchProps(val) {
-  _propSearchText = (val||'').toLowerCase().trim();
-  applyPropsFilter();
+function filterAlt(type, btn) {
+  document.querySelectorAll('.fbtn').forEach(function(b){b.classList.remove('active');});
+  if (btn) btn.classList.add('active');
+  document.querySelectorAll('.alt-card').forEach(function(c){
+    c.style.display = (type==='all'||c.dataset.type===type)?'':'none';
+  });
 }
 
-function clearPropsSearch() {
-  var inp = document.getElementById('props-search');
-  if (inp) inp.value = '';
-  _propSearchText = '';
-  applyPropsFilter();
-}
+function searchProps(val) { _propSearchText=(val||'').toLowerCase().trim(); applyPropsFilter(); }
+function clearPropsSearch() { var i=document.getElementById('props-search'); if(i)i.value=''; _propSearchText=''; applyPropsFilter(); }
 
 function applyPropsFilter() {
   var cards = document.querySelectorAll('.prop-card');
   var visible = 0;
   cards.forEach(function(c) {
-    var typeMatch = _propFilterType === 'all' || c.dataset.type === _propFilterType || c.dataset.tier === _propFilterType;
-    var searchMatch = true;
-    if (_propSearchText) {
-      var name = (c.dataset.player||'').toLowerCase();
-      var team = (c.dataset.team||'').toLowerCase();
-      searchMatch = name.includes(_propSearchText) || team.includes(_propSearchText);
-    }
-    // Game filter — data-team on card = "cha_bkn", button key = "cha_bkn"
-    var gameMatch = true;
-    if (typeof _propGameFilter !== 'undefined' && _propGameFilter !== 'all') {
-      var ct = (c.dataset.team || '').toLowerCase().replace(/\s+/g,'_');
+    var typeOk = _propFilterType==='all'||c.dataset.type===_propFilterType||c.dataset.tier===_propFilterType;
+    var srchOk = !_propSearchText||(c.dataset.player||'').includes(_propSearchText)||(c.dataset.team||'').includes(_propSearchText);
+    var gameOk = _propGameFilter==='all';
+    if (!gameOk) {
+      var ct = (c.dataset.team||'').toLowerCase();
       var gf = _propGameFilter.toLowerCase();
-      // Direct match OR reversed (away/home swapped)
-      var gp = gf.split('_'); var cp = ct.split('_');
-      gameMatch = (ct === gf) || (cp[0]===gp[1] && cp[1]===gp[0]);
+      var cp = ct.split('_'), gp = gf.split('_');
+      gameOk = ct===gf||(cp[0]===gp[1]&&cp[1]===gp[0]);
     }
-    var show = typeMatch && searchMatch && gameMatch;
-    c.style.display = show ? '' : 'none';
-    if (show) visible++;
+    var show = typeOk&&srchOk&&gameOk;
+    c.style.display = show?'':'none';
+    if(show) visible++;
   });
   var info = document.getElementById('props-search-info');
-  if (info) {
-    if (_propSearchText) {
-      info.textContent = visible + ' prop' + (visible !== 1 ? 's' : '') + ' found for "' + _propSearchText + '"';
-      info.style.display = '';
-    } else {
-      info.style.display = 'none';
-    }
-  }
+  if (info) { info.style.display = _propSearchText?'':'none'; if(_propSearchText)info.textContent=visible+' props found'; }
 }
 
-function showErr(id,msg){
-  var el=document.getElementById(id+'-content');
-  if(!el)return;
-  el.innerHTML='<div class="err-box"><div style="font-size:32px;margin-bottom:8px">🕸️</div><h3>Unavailable</h3><p>'+(msg||'Check your .env API keys')+'</p><button class="retry-btn" onclick="loadAllData()">↻ Retry</button></div>';
-}
-function showToast(msg){
-  var t=document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
-  setTimeout(function(){t.classList.remove('show');},2400);
-}
-function cap(s){return s?(s.charAt(0).toUpperCase()+s.slice(1)):'';}
-function esc(s){return(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
-function animateMeters(){
-  document.querySelectorAll('.lfill').forEach(function(el){
-    var cur=parseFloat(el.style.width)||50;
-    el.style.width=Math.max(8,Math.min(97,cur+(Math.random()-.38)*5)).toFixed(1)+'%';
-  });
-}
-
-// ── BEEPBOPSTATS ──────────────────────────────────
-async function initStats() {
-  try {
-    var r = await fetch('/api/stats/popular');
-    var d = await r.json();
-    var el = document.getElementById('stats-suggestions');
-    if (el && d.searches) {
-      el.innerHTML = d.searches.map(function(s){
-        return '<div class="stats-chip" onclick="runSearch(\''+s.replace(/'/g,"\\'")+'\')">' + s + '</div>';
-      }).join('');
-    }
-  } catch(e) {}
-}
-
-function runSearch(q) {
-  var inp = document.getElementById('stats-input');
-  if (inp) inp.value = q;
-  searchStats();
-}
-
-async function searchStats() {
-  var inp = document.getElementById('stats-input');
-  var q   = inp ? inp.value.trim() : '';
-  if (!q) { showToast('Type a player name!'); return; }
-  var res = document.getElementById('stats-result');
-  res.innerHTML = '<div class="loader-box" style="padding:40px"><div class="sp">🔍</div><div class="lt">Searching...</div></div>';
-  try {
-    var r = await fetch('/api/stats/search', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({query:q})
-    });
-    var d = await r.json();
-    if (!d.success) { res.innerHTML='<div class="stats-suggestion-box"><h3>Not Found</h3><p>'+(d.error||'Try a different name')+'</p></div>'; return; }
-    renderStatsResult(d);
-  } catch(e) { res.innerHTML='<div class="stats-suggestion-box"><h3>Error</h3><p>'+e.message+'</p></div>'; }
-}
-
-function renderStatsResult(d) {
-  var res = document.getElementById('stats-result');
-  if (d.type === 'player_season' && d.stats) {
-    var s = d.stats;
-    res.innerHTML = '<div class="stats-result-card">'
-      + '<div class="stats-result-head"><div class="stats-result-title">'+d.title+'</div><div class="stats-result-sub">'+d.subtitle+'</div></div>'
-      + '<div class="stats-avgs">'
-      + '<div class="stats-avg-box"><div class="stats-avg-val">'+s.pts+'</div><div class="stats-avg-lbl">Points</div></div>'
-      + '<div class="stats-avg-box"><div class="stats-avg-val">'+s.reb+'</div><div class="stats-avg-lbl">Rebounds</div></div>'
-      + '<div class="stats-avg-box"><div class="stats-avg-val">'+s.ast+'</div><div class="stats-avg-lbl">Assists</div></div>'
-      + '<div class="stats-avg-box"><div class="stats-avg-val">'+s.stl+'</div><div class="stats-avg-lbl">Steals</div></div>'
-      + '<div class="stats-avg-box"><div class="stats-avg-val">'+s.blk+'</div><div class="stats-avg-lbl">Blocks</div></div>'
-      + '<div class="stats-avg-box"><div class="stats-avg-val">'+s.fg+'</div><div class="stats-avg-lbl">FG%</div></div>'
-      + '<div class="stats-avg-box"><div class="stats-avg-val">'+s.three+'</div><div class="stats-avg-lbl">3P%</div></div>'
-      + '<div class="stats-avg-box"><div class="stats-avg-val">'+s.gp+'</div><div class="stats-avg-lbl">Games</div></div>'
-      + '<div class="stats-avg-box"><div class="stats-avg-val">'+s.min+'</div><div class="stats-avg-lbl">Minutes</div></div>'
-      + '</div>'
-      + (d.note ? '<div class="stats-note">'+d.note+'</div>' : '')
-      + '</div>';
-  } else if (d.type === 'suggestion') {
-    res.innerHTML = '<div class="stats-suggestion-box">'
-      + '<h3>🕷️ BeepBopStats</h3>'
-      + '<p>'+d.message+'</p>'
-      + '<div class="stats-sugg-grid">'
-      + (d.suggestions||[]).map(function(s){ return '<div class="stats-chip" onclick="runSearch(\''+s.replace(/'/g,"\\'")+'\')">' + s + '</div>'; }).join('')
-      + '</div></div>';
-  }
-}
-
-// Init stats on page load
-;
-
-// Mobile slip
-function openSlip(){ document.getElementById('mobile-slip-overlay').style.display='flex'; document.body.style.overflow='hidden'; }
-function closeSlip(){ document.getElementById('mobile-slip-overlay').style.display='none'; document.body.style.overflow=''; }
-function updateMobileBtn(){
-  var btn=document.getElementById('mobile-slip-btn');
-  if(!btn)return;
-  btn.style.display=slipPicks.length>0?'flex':'none';
-  var ct=btn.querySelector('.slip-count');
-  if(ct)ct.textContent=slipPicks.length;
-}
-
-function filterInjuries(status, btn) {
-  document.querySelectorAll('.injury-filter .fbtn').forEach(function(b){ b.classList.remove('active'); });
-  if (btn) btn.classList.add('active');
-  var rows = document.querySelectorAll('.inj-row, .injury-item');
-  rows.forEach(function(r) {
-    var s = (r.dataset.status||'').toLowerCase();
-    r.style.display = (status === 'all' || s.includes(status)) ? '' : 'none';
-  });
-}
-
-function searchInjuries(val) {
-  val = (val||'').toLowerCase();
-  var rows = document.querySelectorAll('.inj-row, .injury-item');
-  rows.forEach(function(r) {
-    var text = r.textContent.toLowerCase();
-    r.style.display = text.includes(val) ? '' : 'none';
-  });
-}
-
-function calcImplied(odds) {
-  if (!odds) return 50;
-  var n = parseInt((odds+'').replace('+',''));
-  if (isNaN(n)) return 50;
-  var imp = n > 0 ? 100/(n+100) : Math.abs(n)/(Math.abs(n)+100);
-  return (imp*100).toFixed(0);
-}
-
-function getValueLabel(odds) {
-  if (!odds) return 'Fair';
-  var n = parseInt((odds+'').replace('+',''));
-  if (isNaN(n)) return 'Fair';
-  // Anything worse than -130 on a main line = vig heavy
-  if (n > 0) return 'Value';
-  if (Math.abs(n) <= 110) return 'Value';
-  if (Math.abs(n) <= 130) return 'Fair';
-  return 'Vig';
-}
-
-function filterInjuryGame(gameKey, btn) {
-  document.querySelectorAll('#injury-game-filters .fbtn').forEach(function(b){ b.classList.remove('active'); });
-  if (btn) btn.classList.add('active');
-  var rows = document.querySelectorAll('.inj-row, .injury-item, .injury-card');
-  rows.forEach(function(r) {
-    var game = (r.dataset.game||'').toLowerCase();
-    r.style.display = (gameKey === 'all' || game.includes(gameKey)) ? '' : 'none';
-  });
-}
-
-// ── SLIP PANEL TOGGLE ──
-var slipPanelOpen = true;
-
-window.toggleSlipPanel = function() {
-  slipPanelOpen = !slipPanelOpen;
-  var body = document.getElementById('slip-body-collapsible');
-  var icon = document.getElementById('slip-toggle-icon');
-  var panel = document.querySelector('.slip-panel');
-  if (body) {
-    body.style.display = slipPanelOpen ? '' : 'none';
-    body.style.overflow = 'hidden';
-  }
-  if (icon) icon.style.transform = slipPanelOpen ? '' : 'rotate(-90deg)';
-  if (panel) panel.style.minWidth = slipPanelOpen ? '' : 'auto';
-};
-
-// Update slip badge count
-function updateSlipBadge() {
-  var count = (window.slipPicks || []).length;
-  var badge = document.getElementById('slip-count-badge');
-  if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline-flex' : 'none'; }
-  var miniCount = document.getElementById('mini-slip-count');
-  if (miniCount) miniCount.textContent = count;
-  // Show mini button on non-props tabs when there are picks
-  var miniBtn = document.getElementById('mini-slip-btn');
-  var activeTab = document.querySelector('.tab-content.active');
-  if (miniBtn && activeTab && activeTab.id !== 'tab-props') {
-    miniBtn.style.display = count > 0 ? 'flex' : 'none';
-  }
-}
-
-// ── PROPS GAME FILTER (like PrizePicks) ──
-var _propGameFilter = 'all';
-
-function filterPropsByGame(gameKey, btn) {
-  _propGameFilter = gameKey;
-  document.querySelectorAll('.pgame-btn').forEach(function(b){ b.classList.remove('active'); });
+function filterPropsByGame(key, btn) {
+  _propGameFilter = key;
+  document.querySelectorAll('.pgame-btn').forEach(function(b){b.classList.remove('active');});
   if (btn) btn.classList.add('active');
   applyPropsFilter();
 }
 
+function filterInjuries(status, btn) {
+  document.querySelectorAll('.filter-bar .fbtn').forEach(function(b){b.classList.remove('active');});
+  if (btn) btn.classList.add('active');
+  document.querySelectorAll('.inj-card').forEach(function(c){
+    var s=(c.dataset.status||'').toLowerCase();
+    c.style.display=(status==='all'||s.includes(status))?'':'none';
+  });
+}
+
+function searchInjuries(val) {
+  val=(val||'').toLowerCase();
+  document.querySelectorAll('.inj-card').forEach(function(c){
+    c.style.display=c.textContent.toLowerCase().includes(val)?'':'none';
+  });
+}
+
+function filterInjuryGame(key, btn) {
+  document.querySelectorAll('#injury-game-filters .fbtn').forEach(function(b){b.classList.remove('active');});
+  if (btn) btn.classList.add('active');
+  document.querySelectorAll('.inj-card').forEach(function(c){
+    var g=(c.dataset.game||'').toLowerCase();
+    c.style.display=(key==='all'||g===key||g.includes(key))?'':'none';
+  });
+}
+
+// ── GAME FILTER FOR PROPS ────────────────────────
 function buildPropsGameFilter(props) {
   var row = document.getElementById('props-game-filter-row');
   if (!row) return;
-  // Always build from props data — same source as data-team on cards
-  // key = "cha_bkn" (lowercase, underscore), same as data-team
-  var seen = {};
-  var games = [];
-  props.forEach(function(p) {
-    if (!p.team || !p.opponent) return;
-    var awayAbbr = p.team.toUpperCase();
-    var homeAbbr = p.opponent.toUpperCase();
-    var key = awayAbbr.toLowerCase() + '_' + homeAbbr.toLowerCase();
-    if (seen[key]) return;
-    seen[key] = 1;
-    games.push({ key:key, away:awayAbbr, home:homeAbbr });
+  var seen={}, games=[];
+  props.forEach(function(p){
+    if(!p.team||!p.opponent)return;
+    var key=p.team.toLowerCase()+'_'+p.opponent.toLowerCase();
+    if(seen[key])return;
+    seen[key]=1;
+    games.push({key:key,away:p.team.toUpperCase(),home:p.opponent.toUpperCase()});
   });
-  var btns = '<button class="pgame-btn active" data-game="all" onclick="filterPropsByGame(this.dataset.game,this)">🏀 All Games</button>';
-  games.forEach(function(g) {
-    var awayId = NBA_TEAM_IDS[g.away] || '';
-    var homeId = NBA_TEAM_IDS[g.home] || '';
-    var awayName = NBA_TEAM_NAMES[g.away] || g.away;
-    var homeName = NBA_TEAM_NAMES[g.home] || g.home;
-    var awayLogo = awayId ? '<img src="https://cdn.nba.com/logos/nba/'+awayId+'/global/L/logo.svg" class="pgame-logo">' : '';
-    var homeLogo = homeId ? '<img src="https://cdn.nba.com/logos/nba/'+homeId+'/global/L/logo.svg" class="pgame-logo">' : '';
-    btns += '<button class="pgame-btn" data-game="' + g.key + '" onclick="filterPropsByGame(this.dataset.game,this)">'
-      + awayLogo + '<span class="pgame-label">' + awayName + ' vs ' + homeName + '</span>' + homeLogo
-    + '</button>';
+  var btns='<button class="pgame-btn active" data-game="all" onclick="filterPropsByGame(\'all\',this)">🏀 All</button>';
+  games.forEach(function(g){
+    var aId=NBA_TEAM_IDS[g.away]||'';
+    var hId=NBA_TEAM_IDS[g.home]||'';
+    var aLogo=aId?'<img src="https://cdn.nba.com/logos/nba/'+aId+'/global/L/logo.svg" style="width:18px;height:18px;vertical-align:middle;margin-right:3px">':'';
+    var hLogo=hId?'<img src="https://cdn.nba.com/logos/nba/'+hId+'/global/L/logo.svg" style="width:18px;height:18px;vertical-align:middle;margin-right:3px">':'';
+    btns+='<button class="pgame-btn" data-game="'+g.key+'" onclick="filterPropsByGame(\''+g.key+'\',this)">'+aLogo+g.away+' vs '+hLogo+g.home+'</button>';
   });
-  row.innerHTML = btns;
+  row.innerHTML=btns;
 }
 
-var NBA_TEAM_NAMES = {
-  ATL:'Hawks',BOS:'Celtics',BKN:'Nets',CHA:'Hornets',CHI:'Bulls',
-  CLE:'Cavaliers',DAL:'Mavericks',DEN:'Nuggets',DET:'Pistons',GSW:'Warriors',
-  HOU:'Rockets',IND:'Pacers',LAC:'Clippers',LAL:'Lakers',MEM:'Grizzlies',
-  MIA:'Heat',MIL:'Bucks',MIN:'Timberwolves',NOP:'Pelicans',NYK:'Knicks',
-  OKC:'Thunder',ORL:'Magic',PHI:'76ers',PHX:'Suns',POR:'Blazers',
-  SAC:'Kings',SAS:'Spurs',TOR:'Raptors',UTA:'Jazz',WAS:'Wizards',
-};
+// ── UTILS ────────────────────────────────────────
+function showErr(id,msg){ var e=document.getElementById(id+'-content'); if(e)e.innerHTML='<div class="err-box"><div style="font-size:32px;margin-bottom:8px">🕸️</div><h3>Could not load</h3><p>'+msg+'</p><button class="refresh-btn" onclick="loadAllData()">Retry</button></div>'; }
+function showToast(msg){ var t=document.getElementById('toast'); if(!t)return; t.textContent=msg;t.classList.add('show'); setTimeout(function(){t.classList.remove('show');},2400); }
+function cap(s){ return s?(s.charAt(0).toUpperCase()+s.slice(1)):''; }
+function esc(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function animateMeters(){ document.querySelectorAll('.lfill').forEach(function(el){ var cur=parseFloat(el.style.width)||50; el.style.width=Math.max(8,Math.min(97,cur+(Math.random()-.38)*5)).toFixed(1)+'%'; }); }
 
-// NBA team ID lookup for logos
+function calcImplied(odds) {
+  if(!odds)return 50;
+  var n=parseInt((odds+'').replace('+',''));
+  if(isNaN(n))return 50;
+  return (n>0?100/(n+100):Math.abs(n)/(Math.abs(n)+100)*100).toFixed(0);
+}
+
+// ── SHOT MAP ─────────────────────────────────────
+function openShotMapFromCard(btn) {
+  var name=btn.dataset.name, pid=btn.dataset.pid, team=btn.dataset.team, opp=btn.dataset.opp, stat=btn.dataset.stat;
+  if(typeof openShotMap==='function') openShotMap(name,pid,team,opp,stat);
+}
+
+// ── STATS (legacy) ───────────────────────────────
+function runSearch(q){ var i=document.getElementById('stats-input'); if(i)i.value=q; if(typeof window.searchStats==='function')window.searchStats(); }
+
+// ── TEAM LOOKUP TABLES ───────────────────────────
 var NBA_TEAM_IDS = {
   'ATL':'1610612737','BOS':'1610612738','BKN':'1610612751','CHA':'1610612766',
   'CHI':'1610612741','CLE':'1610612739','DAL':'1610612742','DEN':'1610612743',
@@ -959,4 +688,13 @@ var NBA_TEAM_IDS = {
   'OKC':'1610612760','ORL':'1610612753','PHI':'1610612755','PHX':'1610612756',
   'POR':'1610612757','SAC':'1610612758','SAS':'1610612759','TOR':'1610612761',
   'UTA':'1610612762','WAS':'1610612764',
+};
+
+var NBA_TEAM_NAMES = {
+  ATL:'Hawks',BOS:'Celtics',BKN:'Nets',CHA:'Hornets',CHI:'Bulls',
+  CLE:'Cavaliers',DAL:'Mavericks',DEN:'Nuggets',DET:'Pistons',GSW:'Warriors',
+  HOU:'Rockets',IND:'Pacers',LAC:'Clippers',LAL:'Lakers',MEM:'Grizzlies',
+  MIA:'Heat',MIL:'Bucks',MIN:'Timberwolves',NOP:'Pelicans',NYK:'Knicks',
+  OKC:'Thunder',ORL:'Magic',PHI:'76ers',PHX:'Suns',POR:'Blazers',
+  SAC:'Kings',SAS:'Spurs',TOR:'Raptors',UTA:'Jazz',WAS:'Wizards',
 };
