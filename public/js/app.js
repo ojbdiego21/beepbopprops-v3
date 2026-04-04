@@ -19,6 +19,20 @@ document.addEventListener('DOMContentLoaded', function() {
   loadAllData();
   setInterval(loadLive, 60000);
   setInterval(animateMeters, 3500);
+
+  // Set initial layout — Props tab is default, slip on right
+  var layout = document.querySelector('.main-layout');
+  var slip = document.querySelector('.slip-panel');
+  if (layout) layout.style.gridTemplateColumns = '1fr 330px';
+  if (slip) { slip.style.display = 'block'; slip.style.position = 'sticky'; slip.style.top = '115px'; }
+
+  // Restore bankroll
+  var saved = localStorage.getItem('bbp_bankroll');
+  if (saved) {
+    var inp = document.getElementById('bankroll-input');
+    if (inp) inp.value = saved;
+    if (typeof setBankroll === 'function') setBankroll(saved);
+  }
 });
 
 function setDate() {
@@ -793,21 +807,7 @@ function renderStatsResult(d) {
 }
 
 // Init stats on page load
-document.addEventListener('DOMContentLoaded', function(){
-  // Set initial layout for Props tab (default active tab)
-  var layout = document.querySelector('.main-layout');
-  var slip = document.querySelector('.slip-panel');
-  if (layout) layout.style.gridTemplateColumns = '1fr 330px';
-  if (slip) { slip.style.display = 'block'; slip.style.position = 'sticky'; slip.style.top = '115px'; }
-  // Restore bankroll from localStorage
-  var saved = localStorage.getItem('bbp_bankroll');
-  if (saved) {
-    var inp = document.getElementById('bankroll-input');
-    if (inp) inp.value = saved;
-    if (typeof setBankroll === 'function') setBankroll(saved);
-  }
-  setTimeout(initStats, 500);
-});
+;
 
 // Mobile slip
 function openSlip(){ document.getElementById('mobile-slip-overlay').style.display='flex'; document.body.style.overflow='hidden'; }

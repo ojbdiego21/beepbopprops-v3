@@ -367,14 +367,14 @@ const PHOTO_IDS = {
   'Scottie Barnes':'1630567',
   'Shai Gilgeous-Alexander':'1628983',
   'Stephen Curry':'201939',
-  'Tari Eason':'1631108',
+  'Tari Eason':'1631107',
   'Tobias Harris':'202699',
   'Trae Young':'1629027',
   'Tristan da Silva':'1641783',
   'Tyler Herro':'1629639',
   'Tyrese Maxey':'1630178',
   'Victor Wembanyama':'1641705',
-  'Walker Kessler':'1631105',
+  'Walker Kessler':'1631117',
   'Wendell Carter Jr':'1628976',
   'Wendell Carter Jr.':'1628976',
   'Zaccharie Risacher':'1642355',
@@ -421,11 +421,11 @@ const PHOTO_IDS = {
 
   'Pascal Siakam':'1627783',
   'Tyrese Haliburton':'1630169',
-  'Andrew Nembhard':'1630217',
+  'Andrew Nembhard':'1630596',
   'Bennedict Mathurin':'1631119',
   'Aaron Nesmith':'1630175',
   'Tyrese Maxey':'1630178',
-  'Ben Sheppard':'1641844',
+  'Ben Sheppard':'1641825',
   'Obi Toppin':'1630167',
   'Jalen Williams':'1631112',
   'Tre Jones':'1630170',
@@ -448,6 +448,7 @@ const PHOTO_IDS = {
   'Kon Knueppel':'1642851',
   'Egor Demin':'1642856',
   'Walter Clayton Jr':'1642383',
+  'Scoot Henderson':'1641706',
 };
 
 function processOddsData(games) {
