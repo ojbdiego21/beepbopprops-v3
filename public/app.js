@@ -1,3 +1,4 @@
+// BeepBopProps$ app.js v4.1 — rebuilt 2026-04-04 09:26
 // BeepBopProps$ — app.js — complete clean rewrite
 
 var allProps = [];
@@ -175,10 +176,15 @@ function buildPropCard(p) {
   if (p.projectedLine != null) {
     var baseL = parseFloat(p.dkLine||p.line||0);
     var projL = parseFloat(p.projectedLine);
-    var diff  = (projL - baseL).toFixed(1);
-    var projCls = projL > baseL ? 'proj-over' : 'proj-under';
-    var arrow   = projL > baseL ? '▲ +' : '▼ ';
-    projHtml = '<div class="proj-line-row"><span class="proj-lbl">📊 Projected</span><span class="proj-val '+projCls+'">'+projL+'</span><span class="proj-diff">'+arrow+Math.abs(parseFloat(diff)).toFixed(1)+'</span></div>';
+    var diffV = projL - baseL;
+    var projCls = diffV > 0 ? 'proj-over' : diffV < 0 ? 'proj-under' : '';
+    var arrow   = diffV > 0 ? '▲ +' : diffV < 0 ? '▼ ' : '→ ';
+    var absDiff = Math.abs(diffV).toFixed(1);
+    projHtml = '<div class="proj-line-row">'
+      + '<span class="proj-lbl">📊 BeepBot Projection</span>'
+      + '<span class="proj-val '+projCls+'">'+projL+'</span>'
+      + '<span class="proj-diff '+projCls+'">'+arrow+absDiff+' vs line</span>'
+      + '</div>';
   }
 
   var pickId  = (pid+'_'+p.statType+'_'+(p.team||'')).replace(/[^a-z0-9_]/gi,'_');
