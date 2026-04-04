@@ -174,12 +174,10 @@ function buildPropCard(p) {
   });
   booksHtml += '</div>';
 
-  // ── PROJECTION + EDGE SECTION ──
+  // ── PROJECTION + EDGE ──
   var projHtml = '';
   var baseL = parseFloat(p.dkLine||p.line||0);
   var projL = p.projectedLine != null ? parseFloat(p.projectedLine) : null;
-  var seasonAvg = p.seasonAvg || null;
-
   if (projL != null) {
     var diffV = projL - baseL;
     var projCls = diffV > 0 ? 'proj-over' : diffV < 0 ? 'proj-under' : '';
@@ -187,7 +185,6 @@ function buildPropCard(p) {
     var absDiff = Math.abs(diffV).toFixed(1);
     var edgePct = baseL > 0 ? ((diffV / baseL) * 100).toFixed(1) : '0.0';
     var edgeSign = diffV > 0 ? '+' : '';
-
     projHtml = '<div class="proj-line-row">'
       + '<span class="proj-lbl">📊 Projection</span>'
       + '<span class="proj-val '+projCls+'">'+projL+'</span>'
@@ -196,27 +193,26 @@ function buildPropCard(p) {
       + '</div>';
   }
 
-  // ── SEASON AVG ROW ──
+  // ── SEASON AVG ──
   var avgHtml = '';
-  if (seasonAvg != null) {
-    var avgDiff = seasonAvg - baseL;
+  if (p.seasonAvg != null) {
+    var avgDiff = p.seasonAvg - baseL;
     var avgCls = avgDiff > 0 ? 'proj-over' : avgDiff < 0 ? 'proj-under' : '';
     avgHtml = '<div class="season-avg-row">'
       + '<span class="avg-lbl">📈 Season Avg</span>'
-      + '<span class="avg-val '+avgCls+'">'+seasonAvg+'</span>'
+      + '<span class="avg-val '+avgCls+'">'+p.seasonAvg+'</span>'
       + '<span class="avg-diff '+avgCls+'">'+(avgDiff>0?'▲ +':'▼ ')+Math.abs(avgDiff).toFixed(1)+' vs line</span>'
       + '</div>';
   }
 
-  // ── PROBABILITY SECTION ──
+  // ── PROBABILITY ──
   var mainOdds = p.dkOdds || p.fdOdds || '';
   var overImpl  = calcImplied(mainOdds);
   var underImpl = 100 - parseInt(overImpl);
   var fairOver  = calcFairOdds(parseInt(overImpl));
   var fairUnder = calcFairOdds(underImpl);
-
   var probHtml = '<div class="prob-section">'
-    + '<div class="prob-header">Probability</div>'
+    + '<div class="prob-header">Probability · Fair Odds</div>'
     + '<div class="prob-bars">'
       + '<div class="prob-item over-prob">'
         + '<span class="prob-side">OVER</span>'
@@ -240,8 +236,9 @@ function buildPropCard(p) {
   var safeLabel = esc(p.playerName+' '+cap(p.statType)+' '+(p.direction||'over').toUpperCase()+' '+(p.line||p.dkLine||'?'));
   var safeName  = esc(p.playerName||'');
   var safeGame  = esc((p.team||'')+(p.opponent?' vs '+p.opponent:''));
+  var cardId = 'pc-'+pickId;
 
-  return '<div class="prop-card '+t+'" data-type="'+p.statType+'" data-tier="'+t+'" data-player="'+(p.playerName||'').toLowerCase()+'" data-team="'+(p.team||'').toLowerCase()+'_'+(p.opponent||'').toLowerCase()+'">'
+  return '<div class="prop-card '+t+'" id="'+cardId+'" data-type="'+p.statType+'" data-tier="'+t+'" data-player="'+(p.playerName||'').toLowerCase()+'" data-team="'+(p.team||'').toLowerCase()+'_'+(p.opponent||'').toLowerCase()+'">'
     + '<div class="pp-head">'
       + '<div class="av"><img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+pid+'.png" onerror="this.style.display=\'none\'"></div>'
       + '<div class="pinfo"><div class="pname">'+p.playerName+'</div><div class="pteam">'+(p.team||'')+(p.opponent?' · vs '+p.opponent:'')+' '+nbaIdHtml+'</div></div>'
@@ -259,7 +256,9 @@ function buildPropCard(p) {
       + '<div class="prop-actions">'
         + '<button class="btn-add-pick" onclick="addPick(this,\''+safeLabel+'\',\''+safeName+'\',\''+safeGame+'\','+conf+',\''+p.statType+'\',\''+pid+'\',\''+pickId+'\')">＋ Add to Slip</button>'
         + '<button class="btn-shot-map" data-name="'+safeName+'" data-pid="'+pid+'" data-team="'+(p.team||'')+'" data-opp="'+(p.opponent||'')+'" data-stat="'+p.statType+'" onclick="openShotMapFromCard(this)" title="Shot Map">📍 Shot Map</button>'
+        + '<button class="btn-deep-dive" onclick="toggleDeepDive(\''+cardId+'\',\''+esc(p.playerName)+'\',\''+pid+'\',\''+(p.team||'')+'\',\''+(p.opponent||'')+'\',\''+p.statType+'\')">🔍 Deep Dive</button>'
       + '</div>'
+      + '<div class="deep-dive-panel" id="dd-'+cardId+'" style="display:none"><div class="dd-loading"><div class="sp" style="font-size:20px">🤖</div> Loading matchup intel...</div></div>'
     + '</div>'
   + '</div>';
 }
@@ -268,11 +267,102 @@ function buildPropCard(p) {
 function calcFairOdds(impliedPct) {
   var p = parseInt(impliedPct) || 50;
   if (p <= 0) p = 1; if (p >= 100) p = 99;
-  if (p >= 50) {
-    return '-' + Math.round((p / (100 - p)) * 100);
-  } else {
-    return '+' + Math.round(((100 - p) / p) * 100);
+  if (p >= 50) return '-' + Math.round((p / (100 - p)) * 100);
+  return '+' + Math.round(((100 - p) / p) * 100);
+}
+
+// ── DEEP DIVE PANEL ──
+async function toggleDeepDive(cardId, playerName, pid, team, opponent, statType) {
+  var panel = document.getElementById('dd-'+cardId);
+  if (!panel) return;
+  if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  panel.innerHTML = '<div class="dd-loading"><div class="sp" style="font-size:20px">🤖</div> Loading matchup intel...</div>';
+
+  try {
+    // Fetch prop detail + game log in parallel
+    var detailP = fetch('/api/prop-detail?player='+encodeURIComponent(playerName)+'&team='+team+'&opponent='+opponent+'&statType='+statType).then(function(r){return r.json();});
+    var logP = fetch('/api/nba/gamelog?playerName='+encodeURIComponent(playerName)+'&playerId='+pid).then(function(r){return r.json();});
+    var results = await Promise.allSettled([detailP, logP]);
+    var detail = results[0].status==='fulfilled' ? results[0].value : {};
+    var logData = results[1].status==='fulfilled' ? results[1].value : {};
+
+    var html = '<div class="dd-content">';
+
+    // ── OPPONENT INJURIES ──
+    var oppInj = (detail.oppInjuries || []);
+    if (oppInj.length) {
+      html += '<div class="dd-section"><div class="dd-sec-title">🏥 '+opponent+' Injuries</div>';
+      oppInj.forEach(function(inj) {
+        var sc = inj.status.toLowerCase().includes('out') ? 'ic-out' : inj.status.toLowerCase().includes('quest') ? 'ic-q' : 'ic-dtd';
+        html += '<div class="dd-inj-row"><span class="dd-inj-name">'+inj.playerName+'</span><span class="inj-chip '+sc+'">'+inj.status+'</span><span class="dd-inj-detail">'+inj.injury+'</span></div>';
+      });
+      if (detail.matchupNotes && detail.matchupNotes.length) {
+        html += '<div class="dd-matchup-note">💡 '+detail.matchupNotes.join(' · ')+'</div>';
+      }
+      html += '</div>';
+    }
+
+    // ── PLAYER SEASON STATS ──
+    if (detail.playerStats) {
+      var ps = detail.playerStats;
+      html += '<div class="dd-section"><div class="dd-sec-title">📊 '+playerName+' Season Stats</div>'
+        + '<div class="dd-stats-grid">'
+        + ddStat('PPG', ps.pts) + ddStat('RPG', ps.reb) + ddStat('APG', ps.ast)
+        + ddStat('SPG', ps.stl) + ddStat('BPG', ps.blk) + ddStat('FG%', ps.fg)
+        + ddStat('3P%', ps.three) + ddStat('GP', ps.gp) + ddStat('MIN', ps.min)
+        + '</div>';
+      if (ps.note) html += '<div class="dd-note">'+ps.note+'</div>';
+      html += '</div>';
+    }
+
+    // ── LAST 5 GAME LOG ──
+    var rows = (logData.rows || []).slice(0, 5);
+    if (rows.length) {
+      var statKey = statType==='points'?'pts':statType==='rebounds'?'reb':statType==='assists'?'ast':statType==='steals'?'stl':statType==='blocks'?'blk':'pts';
+      var propLine = parseFloat(allProps.find(function(pp){return pp.playerName===playerName&&pp.statType===statType;})?.dkLine || 0);
+      var hitCount = 0;
+
+      html += '<div class="dd-section"><div class="dd-sec-title">📋 Last 5 Games</div>'
+        + '<div class="dd-log-table"><table class="sm-table"><thead><tr><th style="text-align:left">Date</th><th>Opp</th><th>W/L</th><th class="gold">'+cap(statType)+'</th><th>PTS</th><th>REB</th><th>AST</th><th>MIN</th></tr></thead><tbody>';
+      rows.forEach(function(g, i) {
+        var val = parseFloat(g[statKey]) || 0;
+        var hit = val > propLine;
+        if (hit) hitCount++;
+        html += '<tr class="'+(i%2===0?'sm-even':'')+'">'
+          + '<td class="sm-date">'+(g.date||'')+'</td>'
+          + '<td class="sm-matchup">'+(g.matchup||'')+'</td>'
+          + '<td class="'+(g.result==='W'?'sm-win':'sm-loss')+'">'+(g.result||'-')+'</td>'
+          + '<td class="'+(hit?'sm-hi':'sm-loss')+'">'+val+'</td>'
+          + '<td>'+(g.pts||0)+'</td><td>'+(g.reb||0)+'</td><td>'+(g.ast||0)+'</td>'
+          + '<td class="sm-small">'+(g.min||0)+'</td>'
+          + '</tr>';
+      });
+      html += '</tbody></table></div>';
+      html += '<div class="dd-hit-rate">Hit Rate (L5): <strong class="'+(hitCount>=3?'over-pct':'under-pct')+'">'+hitCount+'/5</strong> over '+propLine+'</div>';
+      html += '</div>';
+    }
+
+    // ── OTHER GAME PROPS ──
+    var gameProps = (detail.gameProps || []).filter(function(gp){ return gp.playerName !== playerName; }).slice(0, 6);
+    if (gameProps.length) {
+      html += '<div class="dd-section"><div class="dd-sec-title">🏀 Other Props This Game</div><div class="dd-other-props">';
+      gameProps.forEach(function(gp) {
+        var gpCol = gp.tier==='elite'?'var(--gold)':gp.tier==='strong'?'var(--strong)':'var(--muted)';
+        html += '<div class="dd-other-prop"><span class="dd-op-name">'+gp.playerName+'</span><span class="dd-op-stat">'+cap(gp.statType)+' '+(gp.direction||'O').charAt(0).toUpperCase()+' '+gp.line+'</span><span class="dd-op-conf" style="color:'+gpCol+'">'+gp.confidence+'%</span></div>';
+      });
+      html += '</div></div>';
+    }
+
+    html += '</div>';
+    panel.innerHTML = html;
+  } catch(e) {
+    panel.innerHTML = '<div class="dd-loading" style="color:var(--fade)">Failed to load — '+e.message+'</div>';
   }
+}
+
+function ddStat(label, val) {
+  return '<div class="dd-stat-box"><div class="dd-stat-val">'+(val||'--')+'</div><div class="dd-stat-lbl">'+label+'</div></div>';
 }
 
 // ── ALT LINES ────────────────────────────────────
@@ -283,19 +373,14 @@ function renderAltLines(props) {
     var pid  = p.nbaPhotoId || '0';
     var alts = p.altLines || [];
     var mainLine = p.dkLine || p.line || 0;
-    var mainOdds = p.dkOdds || '-110';
-
     html += '<div class="alt-card" data-type="'+p.statType+'">'
       + '<div class="alt-head">'
         + '<img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+pid+'.png" onerror="this.style.display=\'none\'" style="width:36px;height:36px;border-radius:50%;object-fit:cover">'
         + '<div><div class="pname" style="font-size:12px">'+p.playerName+'</div><div class="pteam" style="font-size:10px">'+cap(p.statType)+' · '+(p.team||'')+' vs '+(p.opponent||'')+'</div></div>'
-        + '<div style="margin-left:auto;text-align:right">'
-          + '<div style="font-size:13px;font-weight:700;color:var(--gold)">'+mainLine+'</div>'
-          + '<div style="font-size:9px;color:var(--muted)">ID: '+pid+'</div>'
-        + '</div>'
+        + '<div style="margin-left:auto;text-align:right"><div style="font-size:13px;font-weight:700;color:var(--gold)">'+mainLine+'</div><div style="font-size:9px;color:var(--muted)">ID: '+pid+'</div></div>'
       + '</div>'
       + '<div class="alt-lines-table-wrap"><table class="alt-lines-table">'
-        + '<thead><tr><th>Line</th><th class="over-col">Over Odds</th><th class="over-col">Over %</th><th class="under-col">Under Odds</th><th class="under-col">Under %</th></tr></thead>'
+        + '<thead><tr><th>Line</th><th class="over-col">Over</th><th class="over-col">Over %</th><th class="under-col">Under</th><th class="under-col">Under %</th></tr></thead>'
         + '<tbody>'
       + alts.map(function(a){
           var isMain = a.line === mainLine;
@@ -303,10 +388,10 @@ function renderAltLines(props) {
           var underPct = calcImplied(a.underOdds);
           return '<tr class="'+(isMain?'main-line':'')+'">'
             +'<td class="alt-line-num">'+a.line+(isMain?' <span class="alt-tag main">MAIN</span>':'')+'</td>'
-            +'<td class="alt-odds over-cell">'+a.overOdds+'</td>'
-            +'<td class="alt-prob over-cell">'+overPct+'%</td>'
-            +'<td class="alt-odds under-cell">'+a.underOdds+'</td>'
-            +'<td class="alt-prob under-cell">'+underPct+'%</td>'
+            +'<td class="over-cell">'+a.overOdds+'</td>'
+            +'<td class="over-cell" style="font-weight:700">'+overPct+'%</td>'
+            +'<td class="under-cell">'+a.underOdds+'</td>'
+            +'<td class="under-cell" style="font-weight:700">'+underPct+'%</td>'
           +'</tr>';
         }).join('')
       + '</tbody></table></div>'
