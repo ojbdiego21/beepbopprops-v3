@@ -316,8 +316,8 @@ async function toggleDeepDive(cardId, playerName, pid, team, opponent, statType)
       html += '</div>';
     }
 
-    // ── LAST 5 GAME LOG ──
-    var rows = (logData.rows || []).slice(0, 5);
+    // ── LAST 5 GAME LOG (real data from BDL API) ──
+    var rows = (detail.realGameLog || logData.rows || []).slice(0, 5);
     if (rows.length) {
       var statKey = statType==='points'?'pts':statType==='rebounds'?'reb':statType==='assists'?'ast':statType==='steals'?'stl':statType==='blocks'?'blk':'pts';
       var propLine = parseFloat(allProps.find(function(pp){return pp.playerName===playerName&&pp.statType===statType;})?.dkLine || 0);
@@ -407,22 +407,58 @@ async function loadLive() {
     var r = await fetch('/api/games');
     var d = await r.json();
     if (!d.success) return;
-    var live = (d.games||[]).filter(function(g){ return g.status==='live'; });
+    var games = d.games || [];
     var el = document.getElementById('live-content');
     if (!el) return;
-    if (!live.length) { el.innerHTML='<div class="err-box"><h3>No Live Games</h3><p>Check back when games tip off.</p></div>'; return; }
-    var html = '<div class="games-grid">';
-    live.forEach(function(g){
-      html += '<div class="game-card live-game">'
-        +'<div class="gc-head"><span class="gc-time">'+g.quarter+' '+g.clock+'</span><span class="gc-live">● LIVE</span></div>'
-        +'<div class="matchup">'
-          +'<div class="team"><div class="team-abbr">'+g.awayTeam+'</div><div class="team-score">'+g.awayScore+'</div></div>'
+    if (!games.length) { el.innerHTML='<div class="err-box"><h3>No Games Today</h3><p>Check back on game day.</p></div>'; return; }
+
+    var live = games.filter(function(g){ return g.status==='live'; });
+    var final_ = games.filter(function(g){ return g.status==='final'; });
+    var sched = games.filter(function(g){ return g.status==='scheduled'; });
+    var html = '';
+
+    if (live.length) {
+      html += '<div class="props-section-title" style="color:var(--green)">● Live Now</div><div class="games-grid">';
+      live.forEach(function(g){
+        var aLogo = NBA_TEAM_IDS[g.awayTeam] ? '<img src="https://cdn.nba.com/logos/nba/'+NBA_TEAM_IDS[g.awayTeam]+'/global/L/logo.svg" class="team-logo-img" onerror="this.style.display=\'none\'">' : '';
+        var hLogo = NBA_TEAM_IDS[g.homeTeam] ? '<img src="https://cdn.nba.com/logos/nba/'+NBA_TEAM_IDS[g.homeTeam]+'/global/L/logo.svg" class="team-logo-img" onerror="this.style.display=\'none\'">' : '';
+        html += '<div class="game-card live-game">'
+          +'<div class="gc-head"><span class="gc-time">'+g.quarter+' '+g.clock+'</span><span class="gc-live">● LIVE</span></div>'
+          +'<div class="matchup">'
+            +'<div class="team"><div class="team-logo-wrap">'+aLogo+'</div><div class="team-abbr">'+g.awayTeam+'</div><div class="team-score">'+g.awayScore+'</div></div>'
+            +'<div class="vs-mid"><div class="vs-at">@</div></div>'
+            +'<div class="team"><div class="team-logo-wrap">'+hLogo+'</div><div class="team-abbr">'+g.homeTeam+'</div><div class="team-score">'+g.homeScore+'</div></div>'
+          +'</div>'
+        +'</div>';
+      });
+      html += '</div>';
+    }
+    if (final_.length) {
+      html += '<div class="props-section-title">✅ Final</div><div class="games-grid">';
+      final_.forEach(function(g){
+        html += '<div class="game-card"><div class="gc-head"><span class="gc-time">FINAL</span></div>'
+          +'<div class="matchup"><div class="team"><div class="team-abbr">'+g.awayTeam+'</div><div class="team-score">'+g.awayScore+'</div></div>'
           +'<div class="vs-mid"><div class="vs-at">@</div></div>'
-          +'<div class="team"><div class="team-abbr">'+g.homeTeam+'</div><div class="team-score">'+g.homeScore+'</div></div>'
-        +'</div>'
-      +'</div>';
-    });
-    el.innerHTML = html + '</div>';
+          +'<div class="team"><div class="team-abbr">'+g.homeTeam+'</div><div class="team-score">'+g.homeScore+'</div></div></div></div>';
+      });
+      html += '</div>';
+    }
+    if (sched.length && !live.length) {
+      html += '<div class="props-section-title">🗓 Upcoming</div><div class="games-grid">';
+      sched.forEach(function(g){
+        var hp = g.homeWinProb || 50;
+        var ap = 100 - hp;
+        html += '<div class="game-card"><div class="gc-head"><span class="gc-time">'+g.tipoff+'</span><span class="badge b-'+(g.tier||'neutral')+'">'+(g.tier||'').toUpperCase()+'</span></div>'
+          +'<div class="matchup"><div class="team"><div class="team-abbr">'+g.awayTeam+'</div><div class="team-rec">'+g.awayRecord+'</div></div>'
+          +'<div class="vs-mid"><div class="vs-at">@</div><div class="gspread">'+g.spread+'</div><div class="gtotal">O/U '+g.total+'</div></div>'
+          +'<div class="team"><div class="team-abbr">'+g.homeTeam+'</div><div class="team-rec">'+g.homeRecord+'</div></div></div>'
+          +'<div class="prob-row"><span class="plabel">'+g.awayTeam+' '+ap+'%</span><div class="pbar"><div class="pfill" style="width:'+ap+'%"></div></div><span class="plabel">'+g.homeTeam+' '+hp+'%</span></div>'
+        +'</div>';
+      });
+      html += '</div>';
+    }
+    if (!html) html = '<div class="err-box"><h3>No Live Games</h3><p>Check back when games tip off.</p></div>';
+    el.innerHTML = html;
   } catch(e) {}
 }
 
@@ -463,20 +499,31 @@ async function loadParlays() {
   var el = document.getElementById('parlays-content');
   if (!el) return;
   if (!allProps.length) { await loadProps(); }
-  var elite = allProps.filter(function(p){ return p.tier==='elite'; }).slice(0,6);
-  if (!elite.length) { el.innerHTML='<div class="err-box"><h3>Add picks to build parlays</h3></div>'; return; }
+  var elite = allProps.filter(function(p){ return p.tier==='elite'||p.tier==='strong'; }).slice(0,8);
+  if (!elite.length) { el.innerHTML='<div class="err-box"><h3>No Elite/Strong Picks</h3><p>Props appear when lines are posted.</p></div>'; return; }
   var combos = [];
+  // 2-leg combos
   for (var i=0;i<elite.length;i++) for(var j=i+1;j<elite.length;j++) {
+    var sameGame = elite[i].team===elite[j].team || elite[i].opponent===elite[j].team;
     var p = (elite[i].confidence/100)*(elite[j].confidence/100);
-    combos.push({ legs:[elite[i],elite[j]], prob:Math.round(p*100) });
+    if (sameGame) p *= 0.92; // correlation penalty
+    combos.push({ legs:[elite[i],elite[j]], prob:Math.round(p*100), sameGame:sameGame });
+  }
+  // 3-leg combos from top elite
+  var topElite = elite.filter(function(p){return p.tier==='elite';}).slice(0,4);
+  for (var a=0;a<topElite.length;a++) for(var b=a+1;b<topElite.length;b++) for(var c=b+1;c<topElite.length;c++) {
+    var p3 = (topElite[a].confidence/100)*(topElite[b].confidence/100)*(topElite[c].confidence/100);
+    combos.push({ legs:[topElite[a],topElite[b],topElite[c]], prob:Math.round(p3*100), sameGame:false });
   }
   combos.sort(function(a,b){ return b.prob-a.prob; });
   var html = '<div class="parlay-grid">';
-  combos.slice(0,6).forEach(function(c){
+  combos.slice(0,8).forEach(function(c,idx){
     var payout = Math.round(((1/(c.prob/100))-1)*100);
-    html += '<div class="parlay-card">'
-      +'<div class="parlay-legs">'+c.legs.map(function(l){ return '<div class="parlay-leg">'+l.playerName+' '+cap(l.statType)+' O'+l.dkLine+'</div>'; }).join('')+'</div>'
-      +'<div class="parlay-foot"><span class="parlay-prob">'+c.prob+'%</span><span class="parlay-pay">+$'+payout+' on $100</span></div>'
+    var tierCls = c.prob>=55?'b-elite':c.prob>=40?'b-strong':'b-neutral';
+    html += '<div class="parl-card">'
+      +'<div class="parl-title">'+c.legs.length+'-Leg '+(c.prob>=55?'🔥 Elite':'⚡ Strong')+' Parlay'+(c.sameGame?' <span style="color:var(--gold);font-size:10px">⚠️ SGP</span>':'')+'</div>'
+      +'<div class="parlay-legs">'+c.legs.map(function(l,li){ return '<div class="parl-leg"><span class="legn">L'+(li+1)+'</span>'+l.playerName+' '+cap(l.statType)+' O'+(l.dkLine||l.line)+' <span class="badge '+('b-'+l.tier)+'">'+l.confidence+'%</span></div>'; }).join('')+'</div>'
+      +'<div class="parl-foot"><div><div class="po-lbl">Combined Prob</div><div class="po-val">'+c.prob+'%</div></div><div><div class="po-lbl">Est. Payout ($100)</div><div class="po-val">+$'+payout+'</div></div></div>'
     +'</div>';
   });
   el.innerHTML = html + '</div>';
