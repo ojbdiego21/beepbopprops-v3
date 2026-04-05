@@ -205,17 +205,21 @@ function mlToProb(ml) {
 }
 
 function getWinProb(homeTeam, awayTeam, spread, rawHome, homeML, awayML) {
-  // 1. Use ESPN predictor if non-trivial
-  if (rawHome && rawHome > 5 && rawHome < 95 && rawHome !== 50) {
-    return { home: Math.round(rawHome), away: Math.round(100-rawHome) };
-  }
-  // 2. Derive from moneyline if available
-  if (homeML && awayML) {
+  // 1. Derive from moneyline FIRST (most accurate market-based probability)
+  if (homeML && awayML && homeML !== 0 && awayML !== 0) {
     const hp = mlToProb(homeML);
-    if (hp) return { home: hp, away: 100-hp };
+    if (hp && hp > 5 && hp < 95) return { home: hp, away: 100-hp };
+  }
+  // 2. Use ESPN predictor if available and meaningful
+  const rh = parseFloat(rawHome);
+  if (rh && !isNaN(rh) && rh > 5 && rh < 95 && rh !== 50) {
+    return { home: Math.round(rh), away: Math.round(100-rh) };
   }
   // 3. Fall back to spread math
-  return spreadToProb(spread);
+  const sp = spreadToProb(spread);
+  if (sp.home !== 50 || sp.away !== 50) return sp;
+  // 4. Final fallback - slight home advantage
+  return { home: 52, away: 48 };
 }
 
 
@@ -1054,28 +1058,70 @@ app.get('/api/nba/career', async (req,res) => {
 });
 
 // PROP DETAIL — returns opponent injuries, positional weakness, matchup context
-app.get('/api/prop-detail', (req, res) => {
+app.get('/api/prop-detail', async (req, res) => {
   const { player, team, opponent, statType } = req.query;
   if (!player || !opponent) return res.json({ success: false, error: 'Need player + opponent' });
 
-  // Opponent injuries
   const oppInjuries = store.injuries.filter(i => i.team === opponent);
-
-  // Find opponent's defensive rank from PLAYER_STATS context
   const nameKey = (player || '').toLowerCase();
   const playerStat = PLAYER_STATS[nameKey];
 
-  // Get all props for same game for context
   const allGameProps = (store.liveProps.length ? store.liveProps : SEEDED_PROPS)
     .filter(p => (p.team === team && p.opponent === opponent) || (p.team === opponent && p.opponent === team));
 
-  // Build matchup notes
   let matchupNotes = [];
   if (oppInjuries.length) {
     const outPlayers = oppInjuries.filter(i => i.status.toLowerCase().includes('out'));
     const questionable = oppInjuries.filter(i => i.status.toLowerCase().includes('quest'));
-    if (outPlayers.length) matchupNotes.push(outPlayers.map(i => i.playerName + ' (OUT - ' + i.injury + ')').join(', '));
-    if (questionable.length) matchupNotes.push(questionable.map(i => i.playerName + ' (GTD - ' + i.injury + ')').join(', '));
+    if (outPlayers.length) matchupNotes.push('OUT: ' + outPlayers.map(i => i.playerName + ' (' + i.injury + ')').join(', '));
+    if (questionable.length) matchupNotes.push('GTD: ' + questionable.map(i => i.playerName + ' (' + i.injury + ')').join(', '));
+    // Add backup context
+    const outPositions = outPlayers.map(i => {
+      const ps = PLAYER_STATS[(i.playerName||'').toLowerCase()];
+      if (ps) return i.playerName + ' (' + (ps.pts||0) + ' PPG) is OUT — backup gets start';
+      return null;
+    }).filter(Boolean);
+    if (outPositions.length) matchupNotes.push(outPositions.join('. '));
+  }
+
+  // Try to fetch real last-10 game log for this player via BDL
+  let realGameLog = null;
+  const BDL_KEY = process.env.BALLDONTLIE_API_KEY;
+  if (BDL_KEY) {
+    try {
+      const searchRes = await axios.get('https://api.balldontlie.io/v1/players/active', {
+        headers: { Authorization: BDL_KEY },
+        params: { search: player, per_page: 3 },
+        timeout: 6000,
+      });
+      const found = (searchRes.data.data || [])[0];
+      if (found) {
+        let allStats = [], cursor = null;
+        const r = await axios.get('https://api.balldontlie.io/v1/stats', {
+          headers: { Authorization: BDL_KEY },
+          params: { 'player_ids[]': found.id, 'seasons[]': 2025, per_page: 15, postseason: false },
+          timeout: 8000,
+        });
+        allStats = (r.data.data || []).sort((a,b) => (b.game?.date||'').localeCompare(a.game?.date||''));
+        if (allStats.length) {
+          realGameLog = allStats.slice(0, 10).map(s => {
+            const g = s.game || {};
+            const myAbbr = s.team?.abbreviation || '';
+            const homeAbbr = g.home_team?.abbreviation || '';
+            const isHome = myAbbr === homeAbbr;
+            const opp = isHome ? g.visitor_team?.abbreviation : g.home_team?.abbreviation;
+            return {
+              date: (g.date||'').split('T')[0],
+              matchup: (isHome ? 'vs ' : '@ ') + (opp||''),
+              pts: s.pts||0, reb: s.reb||0, ast: s.ast||0,
+              stl: s.stl||0, blk: s.blk||0, tov: s.turnover||0,
+              min: s.min ? parseInt(s.min)||0 : 0,
+              fgm: s.fgm||0, fga: s.fga||0, fg3m: s.fg3m||0, fg3a: s.fg3a||0,
+            };
+          });
+        }
+      }
+    } catch(e) { /* silently fail */ }
   }
 
   res.json({
@@ -1083,6 +1129,7 @@ app.get('/api/prop-detail', (req, res) => {
     playerStats: playerStat || null,
     oppInjuries,
     matchupNotes,
+    realGameLog,
     gameProps: allGameProps.map(p => ({
       playerName: p.playerName, statType: p.statType, line: p.dkLine || p.line,
       confidence: p.confidence, tier: p.tier, direction: p.direction,
