@@ -205,17 +205,20 @@ function mlToProb(ml) {
 }
 
 function getWinProb(homeTeam, awayTeam, spread, rawHome, homeML, awayML) {
-  // 1. Use ESPN predictor if non-trivial
-  if (rawHome && rawHome > 5 && rawHome < 95 && rawHome !== 50) {
-    return { home: Math.round(rawHome), away: Math.round(100-rawHome) };
-  }
-  // 2. Derive from moneyline if available
-  if (homeML && awayML) {
+  // 1. Moneyline FIRST (most accurate market-based)
+  if (homeML && awayML && homeML !== 0 && awayML !== 0) {
     const hp = mlToProb(homeML);
-    if (hp) return { home: hp, away: 100-hp };
+    if (hp && hp > 5 && hp < 95) return { home: hp, away: 100-hp };
   }
-  // 3. Fall back to spread math
-  return spreadToProb(spread);
+  // 2. ESPN predictor if meaningful
+  const rh = parseFloat(rawHome);
+  if (rh && !isNaN(rh) && rh > 5 && rh < 95 && rh !== 50) {
+    return { home: Math.round(rh), away: Math.round(100-rh) };
+  }
+  // 3. Spread math
+  const sp = spreadToProb(spread);
+  if (sp.home !== 50) return sp;
+  return { home: 52, away: 48 };
 }
 
 
@@ -500,7 +503,29 @@ SEEDED_PROPS.forEach(p => {
   }
 
   p.projectedLine = projected;
+  // Attach season avg
+  if (playerStat) {
+    const st = p.statType || '';
+    if (st === 'points') p.seasonAvg = playerStat.pts;
+    else if (st === 'rebounds') p.seasonAvg = playerStat.reb;
+    else if (st === 'assists') p.seasonAvg = playerStat.ast;
+    else if (st === 'steals') p.seasonAvg = playerStat.stl;
+    else if (st === 'blocks') p.seasonAvg = playerStat.blk;
+  }
 });
+
+function lookupSeasonAvg(playerName, statType) {
+  const nameKey = (playerName||'').toLowerCase();
+  const ps = PLAYER_STATS[nameKey];
+  if (!ps) return null;
+  const st = (statType||'').toLowerCase();
+  if (st === 'points') return ps.pts;
+  if (st === 'rebounds') return ps.reb;
+  if (st === 'assists') return ps.ast;
+  if (st === 'steals') return ps.stl;
+  if (st === 'blocks') return ps.blk;
+  return null;
+}
 
 function processOddsData(games) {
   // Build gameId -> teams map from Odds API game data
@@ -636,6 +661,7 @@ function processOddsData(games) {
       rebetLine: ml, rebetOdds: dko,
       altLines: buildAltLines(ml, dko),
       date: p.date,
+      seasonAvg: lookupSeasonAvg(p.playerName, p.statType),
     });
   }
 
@@ -749,6 +775,7 @@ app.get('/api/props', (req,res) => {
   let rawProps = store.liveProps.length > 0 ? store.liveProps : [...SEEDED_PROPS];
   // Add projected line to any props missing it
   rawProps.forEach(p => {
+    if (p.seasonAvg == null) p.seasonAvg = lookupSeasonAvg(p.playerName, p.statType);
     if (p.projectedLine == null) {
       const base = parseFloat(p.dkLine || p.line || 0);
       const conf  = p.confidence || 55;
@@ -1008,15 +1035,36 @@ app.get('/api/nba/career', async (req,res) => {
   } catch(e){ res.status(500).json({success:false,error:e.message}); }
 });
 
-app.get('/api/debug/proj',(req,res)=>{
-  const sample = [...SEEDED_PROPS].slice(0,5).map(p=>({
-    name: p.playerName,
-    stat: p.statType,
-    line: p.dkLine,
-    projected: p.projectedLine,
-    diff: p.projectedLine != null ? (p.projectedLine - p.dkLine).toFixed(1) : 'null'
-  }));
-  res.json({sample});
+app.get('/api/prop-detail', async (req, res) => {
+  const { player, team, opponent, statType } = req.query;
+  if (!player) return res.json({ success: false });
+  const oppInjuries = store.injuries.filter(i => i.team === (opponent||''));
+  const nameKey = (player||'').toLowerCase();
+  const playerStat = PLAYER_STATS[nameKey] || null;
+  const gameProps = (store.liveProps.length ? store.liveProps : SEEDED_PROPS)
+    .filter(p => (p.team===team&&p.opponent===opponent)||(p.team===opponent&&p.opponent===team))
+    .map(p => ({playerName:p.playerName,statType:p.statType,line:p.dkLine||p.line,confidence:p.confidence,tier:p.tier,direction:p.direction}));
+  let matchupNotes = [];
+  const outP = oppInjuries.filter(i => i.status.toLowerCase().includes('out'));
+  if (outP.length) matchupNotes.push('OUT: ' + outP.map(i=>i.playerName+' ('+i.injury+')').join(', '));
+  // Try BDL for real game log
+  let realGameLog = null;
+  const BDL_KEY = process.env.BALLDONTLIE_API_KEY;
+  if (BDL_KEY) {
+    try {
+      const sr = await axios.get('https://api.balldontlie.io/v1/players/active', {headers:{Authorization:BDL_KEY},params:{search:player,per_page:3},timeout:6000});
+      const found = (sr.data.data||[])[0];
+      if (found) {
+        const r = await axios.get('https://api.balldontlie.io/v1/stats', {headers:{Authorization:BDL_KEY},params:{'player_ids[]':found.id,'seasons[]':2025,per_page:15,postseason:false},timeout:8000});
+        const all = (r.data.data||[]).sort((a,b)=>(b.game?.date||'').localeCompare(a.game?.date||''));
+        realGameLog = all.slice(0,10).map(s => {
+          const g=s.game||{}, myA=s.team?.abbreviation||'', hA=g.home_team?.abbreviation||'', isH=myA===hA;
+          return {date:(g.date||'').split('T')[0],matchup:(isH?'vs ':'@ ')+(isH?g.visitor_team?.abbreviation:g.home_team?.abbreviation||''),pts:s.pts||0,reb:s.reb||0,ast:s.ast||0,stl:s.stl||0,blk:s.blk||0,min:s.min?parseInt(s.min):0};
+        });
+      }
+    } catch(e) {}
+  }
+  res.json({success:true,playerStats:playerStat,oppInjuries,matchupNotes,realGameLog,gameProps});
 });
 
 app.get('/api/health',(req,res)=>res.json({status:'ok',time:new Date().toISOString(),games:store.games.length,injuries:store.injuries.length,liveProps:store.liveProps.length,source:store.liveProps.length>0?'Odds API (LIVE)':'Seeded (hardcoded)'}));
