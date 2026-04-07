@@ -1453,3 +1453,25 @@ body.props-tab-active { padding-bottom:70px; }
 .h2h-games{border-top:1px solid var(--bord);padding-top:10px;}
 .h2h-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px;}
 .h2h-row:last-child{border-bottom:none;}
+
+/* ═══════════════════════════════════════
+   CLEAN ALT LINE ROWS
+   ═══════════════════════════════════════ */
+.alt-row{display:grid;grid-template-columns:70px 1fr 50px 60px 40px;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;}
+.alt-row:last-of-type{border-bottom:none;}
+.alt-row-header{font-size:9px;color:var(--muted);font-weight:600;letter-spacing:.3px;text-transform:uppercase;padding:8px 12px 4px;border-bottom:1px solid var(--bord);background:rgba(0,0,0,.15);}
+.alt-row-main{background:rgba(255,215,0,.06);border-left:3px solid var(--gold);}
+.alt-row-line{font-weight:700;color:#fff;white-space:nowrap;}
+.alt-main-tag{font-size:7px;background:rgba(255,215,0,.2);color:var(--gold);padding:1px 4px;border-radius:3px;font-weight:700;vertical-align:middle;margin-left:3px;}
+.alt-row-bar-wrap{position:relative;height:8px;background:var(--surf2);border-radius:4px;overflow:hidden;}
+.alt-row-bar{height:100%;border-radius:4px;transition:width .4s ease;}
+.alt-row-pct{font-weight:700;text-align:right;font-size:13px;}
+.alt-row-odds{font-size:10px;color:var(--muted);text-align:right;}
+.alt-row-tag{font-size:8px;color:var(--green);font-weight:700;text-align:center;}
+.alt-real-btn-wrap{padding:8px 12px;border-top:1px solid var(--bord);}
+.alt-real-btn{width:100%;padding:8px;background:linear-gradient(135deg,rgba(255,215,0,.08),rgba(255,215,0,.03));border:1px solid rgba(255,215,0,.25);border-radius:8px;color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px;}
+.alt-real-btn:hover{background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(255,215,0,.08));}
+.alt-real-btn:disabled{opacity:.6;cursor:not-allowed;}
+.alt-real-summary{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);padding:4px 0;}
+.alt-real-summary strong{font-size:13px;}
+@media(max-width:500px){.alt-row{grid-template-columns:60px 1fr 45px 50px 30px;gap:4px;padding:5px 8px;font-size:11px;}}

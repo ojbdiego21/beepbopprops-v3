@@ -113,7 +113,7 @@ async function loadProps() {
 function renderProps(props) {
   if (!props.length) {
     var el = document.getElementById('props-content');
-    if (el) el.innerHTML = '<div class="err-box"><h3>No Props</h3><p>Props appear when lines are posted.</p></div>';
+    if (el) el.innerHTML = '<div class="err-box"><div style="font-size:36px;margin-bottom:10px">🤖</div><h3>No Props Right Now</h3><p>Props appear ~2 hours before tip-off when sportsbooks post lines.<br>The Odds API pulls live data from DraftKings, FanDuel, BetMGM &amp; Caesars automatically.<br><br><strong style="color:var(--gold)">Check back on game day!</strong></p></div>';
     return;
   }
 
@@ -248,12 +248,10 @@ function buildPropCard(p) {
 var _altStatFilter = 'all';
 var _altGameFilter = 'all';
 var _altTierFilter = 'all';
-var _altDirFilter = 'all';
 var _altSearchText = '';
 
 function renderAltLines(props) {
-  if (!props.length) { var e=document.getElementById('altlines-content'); if(e)e.innerHTML='<div class="err-box"><h3>No Alt Lines</h3></div>'; return; }
-  // Build game filter buttons for alt lines
+  if (!props.length) { var e=document.getElementById('altlines-content'); if(e)e.innerHTML='<div class="err-box"><h3>No Props Available</h3><p>Alt lines appear when Odds API has live data.</p></div>'; return; }
   buildAltGameFilter(props);
   window._altProps = props;
   renderAltFiltered();
@@ -266,127 +264,163 @@ function buildAltGameFilter(props) {
   props.forEach(function(p){
     if(!p.team||!p.opponent)return;
     var key=p.team.toLowerCase()+'_'+p.opponent.toLowerCase();
-    if(seen[key])return;
-    seen[key]=1;
+    if(seen[key])return; seen[key]=1;
     games.push({key:key,away:p.team.toUpperCase(),home:p.opponent.toUpperCase()});
   });
   var btns='<button class="pgame-btn active" onclick="filterAltGame(\'all\',this)">🏀 All</button>';
   games.forEach(function(g){
-    var aId=NBA_TEAM_IDS[g.away]||'';
-    var hId=NBA_TEAM_IDS[g.home]||'';
-    var aLogo=aId?'<img src="https://cdn.nba.com/logos/nba/'+aId+'/global/L/logo.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:2px">':'';
-    var hLogo=hId?'<img src="https://cdn.nba.com/logos/nba/'+hId+'/global/L/logo.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:2px">':'';
-    btns+='<button class="pgame-btn" onclick="filterAltGame(\''+g.key+'\',this)">'+aLogo+g.away+' @ '+hLogo+g.home+'</button>';
+    var aId=NBA_TEAM_IDS[g.away]||'', hId=NBA_TEAM_IDS[g.home]||'';
+    var aL=aId?'<img src="https://cdn.nba.com/logos/nba/'+aId+'/global/L/logo.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:2px">':'';
+    var hL=hId?'<img src="https://cdn.nba.com/logos/nba/'+hId+'/global/L/logo.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:2px">':'';
+    btns+='<button class="pgame-btn" onclick="filterAltGame(\''+g.key+'\',this)">'+aL+g.away+' @ '+hL+g.home+'</button>';
   });
   row.innerHTML=btns;
 }
 
-function filterAltGame(key, btn) {
-  _altGameFilter = key;
-  document.querySelectorAll('#alt-game-filter-row .pgame-btn').forEach(function(b){b.classList.remove('active');});
-  if (btn) btn.classList.add('active');
-  renderAltFiltered();
-}
-
-function filterAlt(type, btn) {
-  _altStatFilter = type;
-  document.querySelectorAll('#alt-stat-filters .fbtn').forEach(function(b){b.classList.remove('active');});
-  if (btn) btn.classList.add('active');
-  renderAltFiltered();
-}
-
-function filterAltTier(tier, btn) {
-  _altTierFilter = tier;
-  document.querySelectorAll('#alt-tier-filters .fbtn').forEach(function(b){b.classList.remove('active');});
-  if (btn) btn.classList.add('active');
-  renderAltFiltered();
-}
-
-function filterAltDir(dir, btn) {
-  _altDirFilter = dir;
-  document.querySelectorAll('#alt-dir-filters .fbtn').forEach(function(b){b.classList.remove('active');});
-  if (btn) btn.classList.add('active');
-  renderAltFiltered();
-}
-
-function searchAltLines(val) {
-  _altSearchText = (val||'').toLowerCase().trim();
-  renderAltFiltered();
-}
+function filterAltGame(key, btn) { _altGameFilter=key; document.querySelectorAll('#alt-game-filter-row .pgame-btn').forEach(function(b){b.classList.remove('active');}); if(btn)btn.classList.add('active'); renderAltFiltered(); }
+function filterAlt(type, btn) { _altStatFilter=type; document.querySelectorAll('#alt-stat-filters .fbtn').forEach(function(b){b.classList.remove('active');}); if(btn)btn.classList.add('active'); renderAltFiltered(); }
+function filterAltTier(tier, btn) { _altTierFilter=tier; document.querySelectorAll('#alt-tier-filters .fbtn').forEach(function(b){b.classList.remove('active');}); if(btn)btn.classList.add('active'); renderAltFiltered(); }
+function searchAltLines(val) { _altSearchText=(val||'').toLowerCase().trim(); renderAltFiltered(); }
 
 function renderAltFiltered() {
   var props = window._altProps || [];
   var filtered = props.filter(function(p) {
-    var statOk = _altStatFilter === 'all' || p.statType === _altStatFilter;
-    var tierOk = _altTierFilter === 'all' || p.tier === _altTierFilter;
-    var dirOk = _altDirFilter === 'all' || p.direction === _altDirFilter;
-    var gameOk = _altGameFilter === 'all';
+    var statOk = _altStatFilter==='all' || p.statType===_altStatFilter;
+    var tierOk = _altTierFilter==='all' || p.tier===_altTierFilter;
+    var gameOk = _altGameFilter==='all';
     if (!gameOk) {
-      var pkey = (p.team||'').toLowerCase()+'_'+(p.opponent||'').toLowerCase();
-      var rkey = (p.opponent||'').toLowerCase()+'_'+(p.team||'').toLowerCase();
-      gameOk = pkey === _altGameFilter || rkey === _altGameFilter;
+      var pk=(p.team||'').toLowerCase()+'_'+(p.opponent||'').toLowerCase();
+      var rk=(p.opponent||'').toLowerCase()+'_'+(p.team||'').toLowerCase();
+      gameOk = pk===_altGameFilter || rk===_altGameFilter;
     }
     var srchOk = !_altSearchText || (p.playerName||'').toLowerCase().includes(_altSearchText) || (p.team||'').toLowerCase().includes(_altSearchText);
-    return statOk && tierOk && dirOk && gameOk && srchOk;
+    return statOk && tierOk && gameOk && srchOk;
   });
 
-  var html = '';
   var countEl = document.getElementById('alt-count');
   if (countEl) countEl.textContent = filtered.length + ' of ' + props.length + ' props';
 
+  var html = '';
   filtered.forEach(function(p) {
     var pid = p.nbaPhotoId || '0';
-    var alts = p.altLines || [];
     var mainLine = p.dkLine || p.line || 0;
     var tc = p.tier==='elite'?'var(--gold)':p.tier==='strong'?'var(--strong)':p.tier==='neutral'?'var(--neutral)':'var(--fade)';
     var seasonAvg = p.seasonAvg;
-    // Book comparison row
-    var bookRow = '<div class="alt-books-row">';
+
+    // Book comparison row — show all 7 books with lines + odds
     var books = [
-      {name:'DK',line:p.dkLine,odds:p.dkOdds,cls:'dk'},
-      {name:'FD',line:p.fdLine,odds:p.fdOdds,cls:'fd'},
-      {name:'MGM',line:p.mgmLine,odds:p.mgmOdds,cls:'mgm'},
-      {name:'CZR',line:p.czrLine,odds:p.czrOdds,cls:'czr'},
-      {name:'PP',line:p.ppLine,odds:'—',cls:'pp'},
-      {name:'UD',line:p.udLine,odds:p.udOdds,cls:'ud'},
-      {name:'Rebet',line:p.rebetLine,odds:p.rebetOdds,cls:'reb'},
+      {n:'DK',l:p.dkLine,o:p.dkOdds,c:'dk'},{n:'FD',l:p.fdLine,o:p.fdOdds,c:'fd'},
+      {n:'MGM',l:p.mgmLine,o:p.mgmOdds,c:'mgm'},{n:'CZR',l:p.czrLine,o:p.czrOdds,c:'czr'},
+      {n:'PP',l:p.ppLine,o:'—',c:'pp'},{n:'UD',l:p.udLine,o:p.udOdds,c:'ud'},
+      {n:'Rebet',l:p.rebetLine,o:p.rebetOdds,c:'reb'}
     ];
-    var validLines = books.filter(function(b){return b.line!=null;});
-    var bestBook = validLines.length ? validLines.reduce(function(best,b){return (p.direction==='over'?(b.line<best.line):b.line>best.line)?b:best;},validLines[0]) : null;
+    var valid = books.filter(function(b){return b.l!=null;});
+    var best = valid.length ? valid.reduce(function(bst,b){return b.l<bst.l?b:bst;},valid[0]) : null;
+    var bkHtml='<div class="alt-books-row">';
     books.forEach(function(b){
-      var isBest = bestBook && b.line === bestBook.line && b.name === bestBook.name;
-      bookRow += '<div class="alt-bk'+(isBest?' alt-bk-best':'')+'"><div class="alt-bk-name '+b.cls+'">'+b.name+'</div><div class="alt-bk-line">'+(b.line!=null?b.line:'—')+'</div><div class="alt-bk-odds">'+(b.odds||'—')+'</div>'+(isBest?'<div class="alt-bk-best-tag">BEST</div>':'')+'</div>';
+      var isBest=best&&b.l===best.l&&b.n===best.n;
+      bkHtml+='<div class="alt-bk'+(isBest?' alt-bk-best':'')+'"><div class="alt-bk-name '+b.c+'">'+b.n+'</div><div class="alt-bk-line">'+(b.l!=null?b.l:'—')+'</div><div class="alt-bk-odds">'+(b.o||'—')+'</div>'+(isBest?'<div class="alt-bk-best-tag">BEST</div>':'')+'</div>';
     });
-    bookRow += '</div>';
+    bkHtml+='</div>';
+
+    // Alt lines with hit percentages — use the built-in alt lines but show cleaner
+    var alts = p.altLines || [];
+    var altRows = '';
+    alts.forEach(function(a) {
+      var isMain = a.line === mainLine;
+      var overPct = parseInt(calcImplied(a.overOdds)) || 50;
+      // Color code by probability
+      var pctColor = overPct >= 75 ? 'var(--green)' : overPct >= 55 ? 'var(--strong)' : overPct >= 45 ? 'var(--gold)' : overPct >= 30 ? '#f59e0b' : 'var(--fade)';
+      var barW = Math.max(4, Math.min(overPct, 100));
+      var isBelow = seasonAvg && a.line < seasonAvg;
+      altRows += '<div class="alt-row'+(isMain?' alt-row-main':'')+'">'
+        +'<div class="alt-row-line">'+a.line+(isMain?' <span class="alt-main-tag">MAIN</span>':'')+'</div>'
+        +'<div class="alt-row-bar-wrap"><div class="alt-row-bar" style="width:'+barW+'%;background:'+pctColor+'"></div></div>'
+        +'<div class="alt-row-pct" style="color:'+pctColor+'">'+overPct+'%</div>'
+        +'<div class="alt-row-odds">'+a.overOdds+'</div>'
+        +(isBelow?'<div class="alt-row-tag">↓AVG</div>':'<div class="alt-row-tag"></div>')
+      +'</div>';
+    });
 
     html += '<div class="alt-card" data-type="'+p.statType+'" data-tier="'+p.tier+'">'
-      + '<div class="alt-head">'
-        + '<img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+pid+'.png" onerror="this.style.display=\'none\'" class="alt-head-img">'
-        + '<div class="alt-head-info"><div class="alt-head-name">'+p.playerName+'</div><div class="alt-head-meta">'+cap(p.statType)+' · '+(p.team||'')+' vs '+(p.opponent||'')+' · <span style="color:'+tc+'">'+((p.tier||'').toUpperCase())+'</span></div></div>'
-        + '<div class="alt-head-right"><div class="alt-head-line">'+mainLine+'</div><div class="alt-head-dir '+(p.direction||'over')+'">'+((p.direction||'over').toUpperCase())+'</div>'+(seasonAvg?'<div class="alt-head-avg">Avg: '+seasonAvg+'</div>':'')+'</div>'
-      + '</div>'
-      + bookRow
-      + '<div class="alt-table-wrap"><table class="alt-table">'
-      + '<thead><tr><th>Line</th><th style="color:var(--green)">Over</th><th style="color:var(--green)">Over %</th><th class="alt-pct-bar-th"></th><th style="color:var(--fade)">Under</th><th style="color:var(--fade)">Under %</th></tr></thead><tbody>'
-      + alts.map(function(a){
-          var isMain = a.line === mainLine;
-          var overPct = parseInt(calcImplied(a.overOdds)) || 50;
-          var underPct = parseInt(calcImplied(a.underOdds)) || 50;
-          var isAboveAvg = seasonAvg && a.line < seasonAvg;
-          return '<tr class="'+(isMain?'main-line':'')+'">'
-            +'<td style="font-weight:700">'+a.line+(isMain?' <span class="alt-tag main">MAIN</span>':'')+(isAboveAvg?' <span class="alt-tag" style="background:rgba(34,197,94,.15);color:var(--green)">↓AVG</span>':'')+'</td>'
-            +'<td class="odds-pos">'+a.overOdds+'</td>'
-            +'<td><span class="alt-pct alt-pct-over" style="--pct:'+overPct+'">'+overPct+'%</span></td>'
-            +'<td class="alt-pct-bar-cell"><div class="alt-pct-bar"><div class="alt-pct-fill-over" style="width:'+overPct+'%"></div><div class="alt-pct-fill-under" style="width:'+underPct+'%"></div></div></td>'
-            +'<td class="odds-neg">'+a.underOdds+'</td>'
-            +'<td><span class="alt-pct alt-pct-under">'+underPct+'%</span></td>'
-          +'</tr>';
-        }).join('')
-      + '</tbody></table></div>'
-    + '</div>';
+      // Header
+      +'<div class="alt-head">'
+        +'<img src="https://cdn.nba.com/headshots/nba/latest/1040x760/'+pid+'.png" onerror="this.style.display=\'none\'" class="alt-head-img">'
+        +'<div class="alt-head-info"><div class="alt-head-name">'+p.playerName+'</div><div class="alt-head-meta">'+cap(p.statType)+' · '+(p.team||'')+' vs '+(p.opponent||'')+' · <span style="color:'+tc+'">'+((p.tier||'').toUpperCase())+'</span></div></div>'
+        +'<div class="alt-head-right"><div class="alt-head-line">'+mainLine+'</div>'+(seasonAvg?'<div class="alt-head-avg">Avg: '+seasonAvg+'</div>':'')+'</div>'
+      +'</div>'
+      // Books
+      +bkHtml
+      // Column headers
+      +'<div class="alt-row alt-row-header"><div class="alt-row-line">Line</div><div class="alt-row-bar-wrap">Chance to Hit</div><div class="alt-row-pct">%</div><div class="alt-row-odds">Odds</div><div class="alt-row-tag"></div></div>'
+      // Alt line rows
+      +altRows
+      // Load real data button
+      +'<div class="alt-real-btn-wrap"><button class="alt-real-btn" onclick="loadRealHitRates(this,\''+esc(p.playerName)+'\',\''+p.statType+'\','+mainLine+')">📊 Load Real Hit Rates from Game Log</button></div>'
+    +'</div>';
   });
+
   var el = document.getElementById('altlines-content');
   if (el) el.innerHTML = html || '<div class="err-box"><h3>No matching props</h3><p>Try adjusting your filters.</p></div>';
+}
+
+// Fetch REAL hit rates from BDL game log data
+async function loadRealHitRates(btn, playerName, statType, mainLine) {
+  btn.disabled = true;
+  btn.textContent = '🤖 Fetching game log data...';
+  try {
+    var r = await fetch('/api/hit-rates?playerName='+encodeURIComponent(playerName)+'&statType='+encodeURIComponent(statType));
+    var d = await r.json();
+    if (!d.success || !d.lines) { btn.textContent = '❌ No data available'; return; }
+
+    // Replace the button with real data
+    var wrap = btn.parentElement;
+    var card = wrap.parentElement;
+
+    // Find the alt rows area and replace it
+    var headerEl = card.querySelector('.alt-row-header');
+    var rows = card.querySelectorAll('.alt-row:not(.alt-row-header)');
+    rows.forEach(function(r){ r.remove(); });
+
+    // Update header
+    if (headerEl) {
+      headerEl.innerHTML = '<div class="alt-row-line">Line</div><div class="alt-row-bar-wrap">Hit Rate ('+d.gamesPlayed+' games)</div><div class="alt-row-pct">%</div><div class="alt-row-odds">Games Over</div><div class="alt-row-tag"></div>';
+    }
+
+    // Filter lines to reasonable range around the main line
+    var relevantLines = d.lines.filter(function(l) {
+      return l.line >= mainLine - 4 && l.line <= mainLine + 4 && l.line % 0.5 === 0;
+    });
+
+    // Insert real rows
+    var insertBefore = wrap;
+    relevantLines.forEach(function(l) {
+      var isMain = l.line === mainLine;
+      var pctColor = l.pct >= 75 ? 'var(--green)' : l.pct >= 55 ? 'var(--strong)' : l.pct >= 45 ? 'var(--gold)' : l.pct >= 30 ? '#f59e0b' : 'var(--fade)';
+      var barW = Math.max(4, Math.min(l.pct, 100));
+      var isBelow = d.seasonAvg && l.line < d.seasonAvg;
+      var rowEl = document.createElement('div');
+      rowEl.className = 'alt-row' + (isMain ? ' alt-row-main' : '');
+      rowEl.innerHTML = '<div class="alt-row-line">'+l.line+(isMain?' <span class="alt-main-tag">MAIN</span>':'')+'</div>'
+        +'<div class="alt-row-bar-wrap"><div class="alt-row-bar" style="width:'+barW+'%;background:'+pctColor+'"></div></div>'
+        +'<div class="alt-row-pct" style="color:'+pctColor+'">'+l.pct+'%</div>'
+        +'<div class="alt-row-odds">'+l.hits+'/'+l.gp+'</div>'
+        +(isBelow?'<div class="alt-row-tag">↓AVG</div>':'<div class="alt-row-tag"></div>');
+      card.insertBefore(rowEl, insertBefore);
+    });
+
+    // Replace button with summary
+    wrap.innerHTML = '<div class="alt-real-summary">'
+      +'<span>📊 Season Avg: <strong style="color:var(--gold)">'+d.seasonAvg+'</strong></span>'
+      +'<span>L10 Avg: <strong style="color:var(--green)">'+d.last10Avg+'</strong></span>'
+      +'<span>Median: <strong>'+d.median+'</strong></span>'
+      +'<span style="color:var(--muted)">'+d.gamesPlayed+' games</span>'
+    +'</div>';
+
+  } catch(e) {
+    btn.textContent = '❌ Error loading data';
+    btn.disabled = false;
+  }
 }
 
 // ── LIVE ─────────────────────────────────────────

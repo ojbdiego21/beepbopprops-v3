@@ -772,7 +772,11 @@ app.get('/api/games', (req,res) => {
 // PROPS — live from Odds API, fallback to seeded
 app.get('/api/props', (req,res) => {
   const tOrd={elite:0,strong:1,neutral:2,fade:3};
-  let rawProps = store.liveProps.length > 0 ? store.liveProps : [...SEEDED_PROPS];
+  // ONLY use live Odds API data — never show stale seeded props
+  if (store.liveProps.length === 0) {
+    return res.json({success:true, count:0, source:'none', props:[], message:'No games today or lines not posted yet. Props appear ~2hrs before tip-off.'});
+  }
+  let rawProps = [...store.liveProps];
   // Add projected line to any props missing it
   rawProps.forEach(p => {
     if (p.seasonAvg == null) p.seasonAvg = lookupSeasonAvg(p.playerName, p.statType);
@@ -788,8 +792,7 @@ app.get('/api/props', (req,res) => {
   let props = [...rawProps].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
   if (req.query.type) props=props.filter(p=>p.statType===req.query.type);
   if (req.query.tier) props=props.filter(p=>p.tier===req.query.tier);
-  const source = store.liveProps.length > 0 ? 'live' : 'seeded';
-  res.json({success:true, count:props.length, source, props});
+  res.json({success:true, count:props.length, source:'live', props});
 });
 
 // INJURIES
@@ -1041,7 +1044,7 @@ app.get('/api/prop-detail', async (req, res) => {
   const oppInjuries = store.injuries.filter(i => i.team === (opponent||''));
   const nameKey = (player||'').toLowerCase();
   const playerStat = PLAYER_STATS[nameKey] || null;
-  const gameProps = (store.liveProps.length ? store.liveProps : SEEDED_PROPS)
+  const gameProps = (store.liveProps || [])
     .filter(p => (p.team===team&&p.opponent===opponent)||(p.team===opponent&&p.opponent===team))
     .map(p => ({playerName:p.playerName,statType:p.statType,line:p.dkLine||p.line,confidence:p.confidence,tier:p.tier,direction:p.direction}));
   let matchupNotes = [];
@@ -1149,6 +1152,73 @@ app.get('/api/projections', async (req, res) => {
 });
 
 app.get('/api/health',(req,res)=>res.json({status:'ok',time:new Date().toISOString(),games:store.games.length,injuries:store.injuries.length,liveProps:store.liveProps.length,source:store.liveProps.length>0?'Odds API (LIVE)':'Seeded (hardcoded)'}));
+
+// ── HIT RATE CALCULATOR — real game log data for alt lines ──
+app.get('/api/hit-rates', async (req, res) => {
+  const { playerName, statType } = req.query;
+  if (!playerName) return res.status(400).json({ success: false });
+  const BDL_KEY = process.env.BALLDONTLIE_API_KEY;
+  if (!BDL_KEY) return res.json({ success: false, error: 'No BDL key' });
+  try {
+    const sr = await axios.get('https://api.balldontlie.io/v1/players/active', {
+      headers: { Authorization: BDL_KEY }, params: { search: playerName, per_page: 3 }, timeout: 6000
+    });
+    const found = (sr.data.data || [])[0];
+    if (!found) return res.json({ success: false, error: 'Player not found' });
+
+    let allStats = [], cursor = null;
+    do {
+      const r = await axios.get('https://api.balldontlie.io/v1/stats', {
+        headers: { Authorization: BDL_KEY },
+        params: { 'player_ids[]': found.id, 'seasons[]': 2025, per_page: 100, postseason: false, ...(cursor ? { cursor } : {}) },
+        timeout: 10000,
+      });
+      allStats = allStats.concat(r.data.data || []);
+      cursor = r.data.meta?.next_cursor;
+    } while (cursor && allStats.length < 82);
+
+    if (!allStats.length) return res.json({ success: false, error: 'No stats' });
+
+    const statMap = { points: 'pts', rebounds: 'reb', assists: 'ast', steals: 'stl', blocks: 'blk', threes: 'fg3m' };
+    const field = statMap[(statType || '').toLowerCase()] || 'pts';
+    const vals = allStats.map(g => g[field] || 0).filter(v => v !== null);
+    const gp = vals.length;
+
+    // Calculate hit rates for various lines
+    const avg = gp ? (vals.reduce((s, v) => s + v, 0) / gp) : 0;
+    const sorted = [...vals].sort((a, b) => a - b);
+    const median = gp ? sorted[Math.floor(gp / 2)] : 0;
+
+    // Generate hit rates for lines from floor to ceiling
+    const min = Math.floor(Math.min(...vals));
+    const max = Math.ceil(Math.max(...vals));
+    const lines = [];
+    for (let l = Math.max(0, min - 2); l <= max + 2; l += 0.5) {
+      const rounded = Math.round(l * 2) / 2;
+      const hits = vals.filter(v => v > rounded).length;
+      const pct = gp ? Math.round((hits / gp) * 100) : 0;
+      lines.push({ line: rounded, hits, gp, pct });
+    }
+
+    // Also calc last 10 hit rates
+    const last10 = allStats.sort((a, b) => (b.game?.date || '').localeCompare(a.game?.date || '')).slice(0, 10);
+    const last10Vals = last10.map(g => g[field] || 0);
+    const avg10 = last10Vals.length ? (last10Vals.reduce((s, v) => s + v, 0) / last10Vals.length) : 0;
+
+    res.json({
+      success: true,
+      playerName: found.first_name + ' ' + found.last_name,
+      statType, gamesPlayed: gp,
+      seasonAvg: Math.round(avg * 10) / 10,
+      last10Avg: Math.round(avg10 * 10) / 10,
+      median,
+      lines
+    });
+  } catch (e) {
+    res.json({ success: false, error: e.message });
+  }
+});
+
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
 
 // ── START ──

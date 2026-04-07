@@ -124,7 +124,7 @@
     <!-- ALT LINES TAB -->
     <div id="tab-altlines" class="tab-content">
       <div class="sec-title">📊 Alternate Lines — All Books</div>
-      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Every prop with DraftKings, FanDuel, BetMGM, Caesars, PrizePicks, Underdog &amp; Rebet — plus alt lines at every half-point with implied probabilities.</p>
+      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">See the chance of hitting at every line. Click "Load Real Hit Rates" on any prop to see actual % from this season's game log.</p>
       <!-- Game filter -->
       <div id="alt-game-filter-row" class="props-game-row" style="margin-bottom:8px">
         <button class="pgame-btn active" onclick="filterAltGame('all',this)">🏀 All Games</button>
@@ -139,27 +139,21 @@
         <button class="fbtn" onclick="filterAlt('points',this)">Points</button>
         <button class="fbtn" onclick="filterAlt('rebounds',this)">Rebounds</button>
         <button class="fbtn" onclick="filterAlt('assists',this)">Assists</button>
-        <button class="fbtn" onclick="filterAlt('threes',this)">3-Pointers</button>
+        <button class="fbtn" onclick="filterAlt('threes',this)">3PT</button>
         <button class="fbtn" onclick="filterAlt('blocks',this)">Blocks</button>
         <button class="fbtn" onclick="filterAlt('steals',this)">Steals</button>
-        <button class="fbtn" onclick="filterAlt('Pts+Reb',this)">Pts+Reb</button>
-        <button class="fbtn" onclick="filterAlt('Pts+Ast',this)">Pts+Ast</button>
+        <button class="fbtn" onclick="filterAlt('Pts+Reb',this)">P+R</button>
         <button class="fbtn" onclick="filterAlt('Pts+Reb+Ast',this)">PRA</button>
       </div>
-      <!-- Tier + Direction filters -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <!-- Tier filters -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
         <div id="alt-tier-filters" class="filter-bar" style="margin:0;gap:4px">
           <button class="fbtn active" style="font-size:10px;padding:4px 10px" onclick="filterAltTier('all',this)">All Tiers</button>
           <button class="fbtn" style="font-size:10px;padding:4px 10px" onclick="filterAltTier('elite',this)">⭐ Elite</button>
           <button class="fbtn" style="font-size:10px;padding:4px 10px" onclick="filterAltTier('strong',this)">Strong</button>
           <button class="fbtn" style="font-size:10px;padding:4px 10px" onclick="filterAltTier('fade',this)">🚫 Fade</button>
         </div>
-        <div id="alt-dir-filters" class="filter-bar" style="margin:0;gap:4px">
-          <button class="fbtn active" style="font-size:10px;padding:4px 10px" onclick="filterAltDir('all',this)">Both</button>
-          <button class="fbtn" style="font-size:10px;padding:4px 10px" onclick="filterAltDir('over',this)">Over</button>
-          <button class="fbtn" style="font-size:10px;padding:4px 10px" onclick="filterAltDir('under',this)">Under</button>
-        </div>
-        <div id="alt-count" style="font-size:10px;color:var(--muted);align-self:center;margin-left:auto"></div>
+        <div id="alt-count" style="font-size:10px;color:var(--muted);margin-left:auto"></div>
       </div>
       <div id="altlines-content"><div class="loader-box"><div class="sp">🤖</div><div class="lt">Loading Alt Lines...</div><div class="lb-w"><div class="lb"></div></div></div></div>
     </div>
