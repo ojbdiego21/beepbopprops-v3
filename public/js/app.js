@@ -113,7 +113,7 @@ async function loadProps() {
 function renderProps(props) {
   if (!props.length) {
     var el = document.getElementById('props-content');
-    if (el) el.innerHTML = '<div class="err-box"><div style="font-size:36px;margin-bottom:10px">🤖</div><h3>No Props Right Now</h3><p>Props appear ~2 hours before tip-off when sportsbooks post lines.<br>The Odds API pulls live data from DraftKings, FanDuel, BetMGM &amp; Caesars automatically.<br><br><strong style="color:var(--gold)">Check back on game day!</strong></p></div>';
+    if (el) el.innerHTML = '<div class="err-box"><h3>No Props Loaded</h3><p>Hit Refresh or check your Odds API key.</p></div>';
     return;
   }
 

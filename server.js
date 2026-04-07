@@ -772,11 +772,8 @@ app.get('/api/games', (req,res) => {
 // PROPS — live from Odds API, fallback to seeded
 app.get('/api/props', (req,res) => {
   const tOrd={elite:0,strong:1,neutral:2,fade:3};
-  // ONLY use live Odds API data — never show stale seeded props
-  if (store.liveProps.length === 0) {
-    return res.json({success:true, count:0, source:'none', props:[], message:'No games today or lines not posted yet. Props appear ~2hrs before tip-off.'});
-  }
-  let rawProps = [...store.liveProps];
+  let rawProps = store.liveProps.length > 0 ? [...store.liveProps] : [...SEEDED_PROPS];
+  const source = store.liveProps.length > 0 ? 'live' : 'seeded';
   // Add projected line to any props missing it
   rawProps.forEach(p => {
     if (p.seasonAvg == null) p.seasonAvg = lookupSeasonAvg(p.playerName, p.statType);
@@ -792,7 +789,7 @@ app.get('/api/props', (req,res) => {
   let props = [...rawProps].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
   if (req.query.type) props=props.filter(p=>p.statType===req.query.type);
   if (req.query.tier) props=props.filter(p=>p.tier===req.query.tier);
-  res.json({success:true, count:props.length, source:'live', props});
+  res.json({success:true, count:props.length, source, props});
 });
 
 // INJURIES
@@ -1044,7 +1041,7 @@ app.get('/api/prop-detail', async (req, res) => {
   const oppInjuries = store.injuries.filter(i => i.team === (opponent||''));
   const nameKey = (player||'').toLowerCase();
   const playerStat = PLAYER_STATS[nameKey] || null;
-  const gameProps = (store.liveProps || [])
+  const gameProps = (store.liveProps.length ? store.liveProps : SEEDED_PROPS)
     .filter(p => (p.team===team&&p.opponent===opponent)||(p.team===opponent&&p.opponent===team))
     .map(p => ({playerName:p.playerName,statType:p.statType,line:p.dkLine||p.line,confidence:p.confidence,tier:p.tier,direction:p.direction}));
   let matchupNotes = [];
