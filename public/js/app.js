@@ -104,6 +104,12 @@ async function loadProps() {
     var r = await fetch('/api/props');
     var d = await r.json();
     if (!d.success) { showErr('props','Could not load props.'); return; }
+    if (d.source === 'loading' || (d.count === 0 && d.source !== 'live')) {
+      var el = document.getElementById('props-content');
+      if (el) el.innerHTML = '<div class="loader-box"><div class="sp">🤖</div><div class="lt">Odds API is fetching props...</div><div class="lb-w"><div class="lb"></div></div><div style="font-size:11px;color:var(--muted);margin-top:8px">Auto-retrying in 15 seconds</div></div>';
+      setTimeout(loadProps, 15000);
+      return;
+    }
     allProps = d.props || [];
     renderProps(allProps);
     renderAltLines(allProps);

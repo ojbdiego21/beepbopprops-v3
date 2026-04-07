@@ -227,31 +227,28 @@ async function fetchOddsAPI() {
   const KEY = process.env.ODDS_API_KEY;
   if (!KEY) { console.log('⚠️  No ODDS_API_KEY set'); return; }
   try {
-    // 7 core markets (credit-safe) — 7 × 1 region × 4/hr × 12hr × 30days = 10,080/month
+    // CREDIT-SAFE: Only 4 core markets — each event call costs ~4 credits
+    // 4 credits × ~10 games × every 45min × 8hrs = ~430 credits/day = ~13,000/month (well under 30k)
     const MARKETS = [
-      'player_points','player_rebounds','player_assists',
-      'player_threes','player_blocks','player_steals',
-      'player_points_rebounds_assists',
-      'player_points_rebounds','player_points_assists',
-      'player_double_double','player_rebounds_assists',
+      'player_points','player_rebounds','player_assists','player_threes'
     ].join(',');
 
-    // Step 1: get event IDs — free, no credits used
+    // Step 1: get event IDs — FREE, no credits
     const eventsRes = await axios.get(
       'https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey=' + KEY,
       { timeout: 10000 }
     );
     const events = eventsRes.data || [];
     const rem = eventsRes.headers['x-requests-remaining'] || '?';
-    console.log('📊 Odds API: ' + events.length + ' events | ' + rem + ' credits remaining');
+    const used = eventsRes.headers['x-requests-used'] || '?';
+    console.log('📊 Odds API: ' + events.length + ' events | ' + rem + ' credits remaining | ' + used + ' used');
 
     if (!events.length) {
-      console.log('⚠️  No NBA events — lines not posted yet or season over');
+      console.log('⚠️  No NBA events — no games today or lines not posted');
       return;
     }
 
-    // Step 2: fetch props per event using EVENT endpoint (the only valid endpoint for player props)
-    // DO NOT use regions + bookmakers together — causes 422
+    // Step 2: fetch props per event — ~4 credits each
     const allGames = [];
     for (const event of events) {
       try {
@@ -772,8 +769,11 @@ app.get('/api/games', (req,res) => {
 // PROPS — live from Odds API, fallback to seeded
 app.get('/api/props', (req,res) => {
   const tOrd={elite:0,strong:1,neutral:2,fade:3};
-  let rawProps = store.liveProps.length > 0 ? [...store.liveProps] : [...SEEDED_PROPS];
-  const source = store.liveProps.length > 0 ? 'live' : 'seeded';
+  if (store.liveProps.length === 0) {
+    // API hasn't fetched yet (server just restarted) — tell frontend to retry
+    return res.json({success:true, count:0, source:'loading', props:[], message:'Odds API is fetching — props load within 60 seconds of server start.'});
+  }
+  let rawProps = [...store.liveProps];
   // Add projected line to any props missing it
   rawProps.forEach(p => {
     if (p.seasonAvg == null) p.seasonAvg = lookupSeasonAvg(p.playerName, p.statType);
@@ -789,7 +789,7 @@ app.get('/api/props', (req,res) => {
   let props = [...rawProps].sort((a,b)=>(tOrd[a.tier]||2)-(tOrd[b.tier]||2)||b.confidence-a.confidence);
   if (req.query.type) props=props.filter(p=>p.statType===req.query.type);
   if (req.query.tier) props=props.filter(p=>p.tier===req.query.tier);
-  res.json({success:true, count:props.length, source, props});
+  res.json({success:true, count:props.length, source:'live', props});
 });
 
 // INJURIES
@@ -1041,7 +1041,7 @@ app.get('/api/prop-detail', async (req, res) => {
   const oppInjuries = store.injuries.filter(i => i.team === (opponent||''));
   const nameKey = (player||'').toLowerCase();
   const playerStat = PLAYER_STATS[nameKey] || null;
-  const gameProps = (store.liveProps.length ? store.liveProps : SEEDED_PROPS)
+  const gameProps = (store.liveProps || [])
     .filter(p => (p.team===team&&p.opponent===opponent)||(p.team===opponent&&p.opponent===team))
     .map(p => ({playerName:p.playerName,statType:p.statType,line:p.dkLine||p.line,confidence:p.confidence,tier:p.tier,direction:p.direction}));
   let matchupNotes = [];
@@ -1222,16 +1222,15 @@ app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')))
 app.listen(PORT, async () => {
   console.log('🕷️  BeepBopProps$ → http://localhost:'+PORT);
   await fetchESPN();
-  await fetchOddsAPI();
-  // Refresh ESPN every 15 min during game hours
+  await fetchOddsAPI(); // One fetch on startup — uses ~4 credits per game
+  console.log('⚠️  AUTO-REFRESH DISABLED — credits low. Using Refresh button = manual fetch.');
+  // ESPN is free — keep auto-refreshing
   cron.schedule('*/15 12-23 * * *', fetchESPN, {timezone:'America/New_York'});
-
-  // Refresh Odds API every 30 min (conserve free tier requests)
-  cron.schedule('*/15 11-23 * * *', fetchOddsAPI, {timezone:'America/New_York'}); // 15min refresh
-  // Midnight reset
+  // NO automatic Odds API calls — credits are at 16
+  // Uncomment the line below on May 1st when credits reset:
+  // cron.schedule('*/45 17-23 * * *', fetchOddsAPI, {timezone:'America/New_York'});
   cron.schedule('0 0 * * *', async () => {
     store.liveProps = [];
     await fetchESPN();
-    await fetchOddsAPI();
   }, {timezone:'America/New_York'});
 });
